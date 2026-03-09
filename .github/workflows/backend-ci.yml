@@ -92,7 +92,7 @@ jobs:
     - name: Validate Python config
       working-directory: ./raspberry-pi
       run: |
-        python3 -c "from src.config import Config;"
+        python3 -c "from src.config import AppConfig; config = AppConfig.load_default();"
 
   security-check:
     runs-on: ubuntu-latest

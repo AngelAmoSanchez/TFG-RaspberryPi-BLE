@@ -2,7 +2,7 @@
 
 1. **backend-ci.yml** - CI para Raspberry Pi backend
 2. **integration-tests.yml** - Tests de integración completos
-3. **codeql-analysis.yml** - Análisis de seguridad
+3. **security-analysis.yml** - Análisis de seguridad
 - **dependabot.yml** - Auto-updates de dependencias
 
 ---
@@ -33,17 +33,24 @@
 2. Inicializa la base de datos SQLite (si es valida)
 3. Importa los test backend
 
-### CodeQL Security (`codeql-analysis.yml`)
+### Security Security (`security-analysis.yml`)
+### Security Scan (`security-scan.yml`)
 
 **Trigger**:
 - Push a main/develop
-- Pull Requests
-- Lunes 6:00 (automáticamente)
+- Pull Requests a main
+- Cada push (automáticamente)
 
 **¿Qué hace?**:
-Analiza:
-- Python (raspberry-pi)
-- Vulnerabilidades de seguridad
+Ejecuta análisis de seguridad en tres niveles:
+
+1. **Bandit (Python Security)**
+   - Escanea código Python en `raspberry-pi/src/`
+   - Detecta vulnerabilidades comunes (SQL injection, hardcoded secrets, etc.)
+
+2. **Dependency Vulnerabilities**
+   - **Python**: `safety check` en `requirements.txt`
+   - Identifica dependencias con CVEs conocidos
 
 ### Dependabot (`dependabot.yml`)
 
