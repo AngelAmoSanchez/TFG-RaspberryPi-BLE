@@ -63,20 +63,21 @@ jobs:
         mkdir -p data
         sqlite3 data/detections.db < database/schema.sql
     
-    - name: Run tests
-      working-directory: ./raspberry-pi
-      env:
-        PYTHONPATH: .
-      run: |
-        pytest tests/ -v --cov=src --cov-report=xml --cov-report=term
+    # Hasta que no haya tests no tiene sentido que se ejecute
+    #- name: Run tests
+    #  working-directory: ./raspberry-pi
+    #  env:
+    #    PYTHONPATH: .
+    #  run: |
+    #    pytest tests/ -v --cov=src --cov-report=xml --cov-report=term
     
-    - name: Upload coverage
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./raspberry-pi/coverage.xml
-        flags: backend
-        name: backend-coverage
-
+    #- name: Upload coverage
+    #  uses: codecov/codecov-action@v3
+    #  with:
+    #    file: ./raspberry-pi/coverage.xml
+    #    flags: backend
+    #    name: backend-coverage
+    
   # Validamos la sintaxis de la base de datos y la configuración de Python
   validate-config:
     runs-on: ubuntu-latest
