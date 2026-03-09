@@ -1,0 +1,44 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install backend dependencies
+      working-directory: ./raspberry-pi
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio
+    
+    - name: Initialize database
+      working-directory: ./raspberry-pi
+      run: |
+        mkdir -p data
+        sqlite3 data/detections.db < database/schema.sql
+    
+    - name: Test backend imports
+      working-directory: ./raspberry-pi
+      run: |
+        python -c "from src.main import main;"
+        python -c "from src.config import Config;"
