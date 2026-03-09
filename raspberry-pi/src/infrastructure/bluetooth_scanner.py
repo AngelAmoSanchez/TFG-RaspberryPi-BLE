@@ -1,7 +1,7 @@
 import asyncio
+import logging
 from datetime import datetime
 from typing import List
-import logging
 
 try:
     from bleak import BleakScanner
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class BleakBLEScanner(BluetoothScannerPort):
-    """ Adaptador para el escaneo BLE usando Bleak. """
+    """Adaptador para el escaneo BLE usando Bleak."""
 
     def __init__(self, scan_duration: int = 20):
         """
@@ -33,7 +33,7 @@ class BleakBLEScanner(BluetoothScannerPort):
         self._devices_cache = {}
 
     async def scan_devices(self) -> List[Detection]:
-        """ Escanea dispositivos BLE cercanos
+        """Escanea dispositivos BLE cercanos
 
         Returns:
             Lista de detecciones con MAC, RSSI y timestamp
@@ -48,7 +48,7 @@ class BleakBLEScanner(BluetoothScannerPort):
             def detection_callback(
                 device: BLEDevice, advertisement_data: AdvertisementData
             ):
-                """ Callback llamado por cada dispositivo detectado
+                """Callback llamado por cada dispositivo detectado
                 Se ejecuta en tiempo real durante el escaneo
                 """
 
@@ -81,7 +81,9 @@ class BleakBLEScanner(BluetoothScannerPort):
             # Crear una lista para el cache de detecciones únicas
             detections = list(self._devices_cache.values())
 
-            logger.info(f"OK - Escaneo completado: {len(detections)} dispositivos detectados")
+            logger.info(
+                f"OK - Escaneo completado: {len(detections)} dispositivos detectados"
+            )
 
             # Log de dispositivos detectados
             for det in detections:
@@ -123,7 +125,9 @@ class BleakBLEScanner(BluetoothScannerPort):
                     logger.debug(f"Dispositivo ignorado: {e}")
                     continue
 
-            logger.info(f"OK - Detectado en escaneo simple {len(detections)} dispositivos BLE")
+            logger.info(
+                f"OK - Detectado en escaneo simple {len(detections)} dispositivos BLE"
+            )
             return detections
 
         except Exception as e:
@@ -132,8 +136,8 @@ class BleakBLEScanner(BluetoothScannerPort):
 
 
 class MockBLEScanner(BluetoothScannerPort):
-    """ Mock para probar el sistema sin necesidad del hardware Bluetooth
-    Genera detecciones realistas de manera simulada """
+    """Mock para probar el sistema sin necesidad del hardware Bluetooth
+    Genera detecciones realistas de manera simulada"""
 
     def __init__(self, num_devices: int = 5):
         """
@@ -155,8 +159,8 @@ class MockBLEScanner(BluetoothScannerPort):
         ]
 
     async def scan_devices(self) -> List[Detection]:
-        """ Simula escaneo BLE con datos realistas
-        Útil para desarrollo y demos sin hardware """
+        """Simula escaneo BLE con datos realistas
+        Útil para desarrollo y demos sin hardware"""
         import random
 
         logger.info("[MOCK] Simulando escaneo BLE...")

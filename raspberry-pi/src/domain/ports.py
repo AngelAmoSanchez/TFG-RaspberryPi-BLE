@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import List, Optional
+
 from .models import Detection, Device, Statistics, Zone
 
 

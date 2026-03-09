@@ -1,15 +1,11 @@
+import logging
 from datetime import datetime, timedelta
 from typing import List
-import logging
 
 from ..domain.models import Device, Statistics
-from ..domain.services import (
-    AnonymizationService,
-    ZoneClassifierService,
-    PeopleEstimatorService,
-    PermanenceService,
-)
 from ..domain.ports import BluetoothScannerPort, DeviceRepositoryPort
+from ..domain.services import (AnonymizationService, PeopleEstimatorService,
+                               PermanenceService, ZoneClassifierService)
 
 logger = logging.getLogger(__name__)
 

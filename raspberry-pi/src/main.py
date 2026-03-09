@@ -1,24 +1,18 @@
 import asyncio
-import uvicorn
 import logging
 import sys
 from datetime import datetime
 
+import uvicorn
+
+from .application.use_cases import (ExportDataUseCase, GetStatisticsUseCase,
+                                    ProcessDetectionsUseCase)
 from .config import AppConfig
-from .domain.services import (
-    AnonymizationService,
-    ZoneClassifierService,
-    PeopleEstimatorService,
-    PermanenceService,
-)
-from .application.use_cases import (
-    ProcessDetectionsUseCase,
-    GetStatisticsUseCase,
-    ExportDataUseCase,
-)
+from .domain.services import (AnonymizationService, PeopleEstimatorService,
+                              PermanenceService, ZoneClassifierService)
+from .infrastructure.api import create_app
 from .infrastructure.bluetooth_scanner import MockBLEScanner
 from .infrastructure.repository import SQLiteDeviceRepository
-from .infrastructure.api import create_app
 
 # Configuración de logging
 logging.basicConfig(

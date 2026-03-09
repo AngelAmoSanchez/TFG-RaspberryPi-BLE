@@ -1,13 +1,14 @@
+import logging
 from datetime import datetime, timedelta
 from typing import List
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import logging
 
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+
+from ..application.use_cases import ExportDataUseCase, GetStatisticsUseCase
 from ..domain.models import Statistics
-from ..application.use_cases import GetStatisticsUseCase, ExportDataUseCase
 
 logger = logging.getLogger(__name__)
 
