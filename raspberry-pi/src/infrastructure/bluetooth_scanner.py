@@ -45,9 +45,7 @@ class BleakBLEScanner(BluetoothScannerPort):
 
         try:
             # Callback para recibir dispositivos detectados
-            def detection_callback(
-                device: BLEDevice, advertisement_data: AdvertisementData
-            ):
+            def detection_callback(device: BLEDevice, advertisement_data: AdvertisementData):
                 """Callback llamado por cada dispositivo detectado
                 Se ejecuta en tiempo real durante el escaneo
                 """
@@ -81,9 +79,7 @@ class BleakBLEScanner(BluetoothScannerPort):
             # Crear una lista para el cache de detecciones únicas
             detections = list(self._devices_cache.values())
 
-            logger.info(
-                f"OK - Escaneo completado: {len(detections)} dispositivos detectados"
-            )
+            logger.info(f"OK - Escaneo completado: {len(detections)} dispositivos detectados")
 
             # Log de dispositivos detectados
             for det in detections:
@@ -125,9 +121,7 @@ class BleakBLEScanner(BluetoothScannerPort):
                     logger.debug(f"Dispositivo ignorado: {e}")
                     continue
 
-            logger.info(
-                f"OK - Detectado en escaneo simple {len(detections)} dispositivos BLE"
-            )
+            logger.info(f"OK - Detectado en escaneo simple {len(detections)} dispositivos BLE")
             return detections
 
         except Exception as e:
@@ -183,16 +177,12 @@ class MockBLEScanner(BluetoothScannerPort):
             # Añadimos diferentes valores de RSSI (en rango de 5 dBm)
             rssi = base_rssi + random.randint(-5, 5)
 
-            detection = Detection(
-                mac_address=mac, rssi=rssi, timestamp=timestamp, device_name=name
-            )
+            detection = Detection(mac_address=mac, rssi=rssi, timestamp=timestamp, device_name=name)
             detections.append(detection)
 
         logger.info(f"[MOCK] OK: Generados {len(detections)} dispositivos simulados")
 
         for det in detections:
-            logger.debug(
-                f"  [MOCK] - {det.mac_address} | RSSI: {det.rssi} dBm | {det.device_name}"
-            )
+            logger.debug(f"  [MOCK] - {det.mac_address} | RSSI: {det.rssi} dBm | {det.device_name}")
 
         return detections

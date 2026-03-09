@@ -4,8 +4,12 @@ from typing import List
 
 from ..domain.models import Device, Statistics
 from ..domain.ports import BluetoothScannerPort, DeviceRepositoryPort
-from ..domain.services import (AnonymizationService, PeopleEstimatorService,
-                               PermanenceService, ZoneClassifierService)
+from ..domain.services import (
+    AnonymizationService,
+    PeopleEstimatorService,
+    PermanenceService,
+    ZoneClassifierService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +76,7 @@ class ProcessDetectionsUseCase:
                     )
 
                     if not is_permanent:
-                        logger.debug(
-                            f"Dispositivo {device_hash[:8]}... ignorado (sin permanencia)"
-                        )
+                        logger.debug(f"Dispositivo {device_hash[:8]}... ignorado (sin permanencia)")
                         continue  # Ignorar si solo está de paso
 
                     permanence_mins = self.permanence_service.calculate_permanence(
@@ -108,9 +110,7 @@ class ProcessDetectionsUseCase:
 class GetStatisticsUseCase:
     """Obtener estadísticas agregadas"""
 
-    def __init__(
-        self, repository: DeviceRepositoryPort, estimator: PeopleEstimatorService
-    ):
+    def __init__(self, repository: DeviceRepositoryPort, estimator: PeopleEstimatorService):
         self.repository = repository
         self.estimator = estimator
 
@@ -134,9 +134,7 @@ class GetStatisticsUseCase:
         logger.info(f"Obtenidas {len(stats)} estadísticas por hora")
         return stats
 
-    async def get_daily(
-        self, start_date: datetime, end_date: datetime
-    ) -> List[Statistics]:
+    async def get_daily(self, start_date: datetime, end_date: datetime) -> List[Statistics]:
         """Obtiene estadísticas por día
 
         Args:
@@ -146,9 +144,7 @@ class GetStatisticsUseCase:
         Returns:
             Lista de estadísticas por día y zona
         """
-        logger.info(
-            f"Obteniendo estadísticas diarias: {start_date.date()} a {end_date.date()}"
-        )
+        logger.info(f"Obteniendo estadísticas diarias: {start_date.date()} a {end_date.date()}")
 
         stats = await self.repository.get_daily_stats(start_date, end_date)
 

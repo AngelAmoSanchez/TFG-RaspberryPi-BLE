@@ -4,8 +4,12 @@ Domain Layer - Núcleo de negocio del sistema
 
 from .models import Detection, Device, Statistics, Zone
 from .ports import BluetoothScannerPort, DeviceRepositoryPort
-from .services import (AnonymizationService, PeopleEstimatorService,
-                       PermanenceService, ZoneClassifierService)
+from .services import (
+    AnonymizationService,
+    PeopleEstimatorService,
+    PermanenceService,
+    ZoneClassifierService,
+)
 
 __all__ = [
     # Models

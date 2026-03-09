@@ -109,9 +109,7 @@ def create_app(
         try:
             target_date = datetime.fromisoformat(date) if date else datetime.now()
         except ValueError:
-            raise HTTPException(
-                status_code=400, detail="Invalid date format. Use YYYY-MM-DD"
-            )
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
 
         logger.info(f"GET /api/statistics/hourly?date={target_date.date()}")
 
@@ -133,18 +131,12 @@ def create_app(
         """
         try:
             end = datetime.fromisoformat(end_date) if end_date else datetime.now()
-            start = (
-                datetime.fromisoformat(start_date)
-                if start_date
-                else end - timedelta(days=7)
-            )
+            start = datetime.fromisoformat(start_date) if start_date else end - timedelta(days=7)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date format")
 
         if start > end:
-            raise HTTPException(
-                status_code=400, detail="start_date must be before end_date"
-            )
+            raise HTTPException(status_code=400, detail="start_date must be before end_date")
 
         logger.info(f"GET /api/statistics/daily?start={start.date()}&end={end.date()}")
 

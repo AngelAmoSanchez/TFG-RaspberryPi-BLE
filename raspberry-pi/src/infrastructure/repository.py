@@ -22,9 +22,7 @@ class SQLiteDeviceRepository(DeviceRepositoryPort):
     async def initialize(self):
         """Inicializa la base de datos con el esquema"""
         async with aiosqlite.connect(self.db_path) as db:
-            schema_path = (
-                Path(__file__).parent.parent.parent / "database" / "schema.sql"
-            )
+            schema_path = Path(__file__).parent.parent.parent / "database" / "schema.sql"
 
             with open(schema_path) as f:
                 schema = f.read()
@@ -112,9 +110,7 @@ class SQLiteDeviceRepository(DeviceRepositoryPort):
 
             return stats
 
-    async def get_daily_stats(
-        self, start_date: datetime, end_date: datetime
-    ) -> List[Statistics]:
+    async def get_daily_stats(self, start_date: datetime, end_date: datetime) -> List[Statistics]:
         """Obtiene estadísticas por día"""
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row

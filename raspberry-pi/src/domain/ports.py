@@ -69,9 +69,7 @@ class DeviceRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def get_daily_stats(
-        self, start_date: datetime, end_date: datetime
-    ) -> List[Statistics]:
+    async def get_daily_stats(self, start_date: datetime, end_date: datetime) -> List[Statistics]:
         """Obtiene estadísticas por día
 
         Args:

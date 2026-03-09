@@ -5,11 +5,18 @@ from datetime import datetime
 
 import uvicorn
 
-from .application.use_cases import (ExportDataUseCase, GetStatisticsUseCase,
-                                    ProcessDetectionsUseCase)
+from .application.use_cases import (
+    ExportDataUseCase,
+    GetStatisticsUseCase,
+    ProcessDetectionsUseCase,
+)
 from .config import AppConfig
-from .domain.services import (AnonymizationService, PeopleEstimatorService,
-                              PermanenceService, ZoneClassifierService)
+from .domain.services import (
+    AnonymizationService,
+    PeopleEstimatorService,
+    PermanenceService,
+    ZoneClassifierService,
+)
 from .infrastructure.api import create_app
 from .infrastructure.bluetooth_scanner import MockBLEScanner
 from .infrastructure.repository import SQLiteDeviceRepository
@@ -152,9 +159,7 @@ class Application:
             f"Iniciando servidor API REST en "
             f"http://{self.config.api.host}:{self.config.api.port}"
         )
-        logger.info(
-            f"Documentación disponible en http://localhost:{self.config.api.port}/docs"
-        )
+        logger.info(f"Documentación disponible en http://localhost:{self.config.api.port}/docs")
 
         uvicorn.run(
             self.api,
