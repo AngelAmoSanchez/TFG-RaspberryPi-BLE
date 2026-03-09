@@ -1,0 +1,10 @@
+# Pre-commit hook
+# Ejcutando primero: pre-commit install
+
+repos:
+  # Detección de seguimiento de conventional commits
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.0.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]

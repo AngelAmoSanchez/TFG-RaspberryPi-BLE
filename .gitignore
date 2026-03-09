@@ -1,0 +1,53 @@
+# ==========================
+# Environment & dependencies
+# ==========================
+venv/
+node_modules/
+build/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.db
+*.sqlite
+*.sqlite3
+
+# ==========================
+# IDE & editor files
+# ==========================
+.idea/
+.vscode/
+dist/
+.DS_Store
+.local
+
+# ==========================
+# Logs & coverage
+# ==========================
+*.log
+app.log
+deployments.log
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml
+
+# ==========================
+# Config & environment
+# ==========================
+.env
+.version
+nginx.prod.ssl.conf
+entrypoint.sh
+
+# ==========================
+# Temporary & test files
+# ==========================
+uploads/
+test_file.txt
+
+# ==========================
+# Custom ignores
+# ==========================
+.moduleignore

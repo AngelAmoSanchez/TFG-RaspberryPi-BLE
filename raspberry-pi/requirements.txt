@@ -1,0 +1,26 @@
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.6.0
+pydantic-core>=2.16.0
+
+# Base de datos
+aiosqlite>=0.20.0
+
+# Bluetooth Low Energy (BLE)
+bleak>=0.20.0
+
+# Utilidades
+python-dateutil>=2.8.0
+
+# Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
+pytest-mock>=3.12.0
+
+# Hooks
+pre-commit>=4.5.1
+black>=24.2.0
+isort>=5.6.4
+flake8>=7.0.0
+mypy>=1.9.0
