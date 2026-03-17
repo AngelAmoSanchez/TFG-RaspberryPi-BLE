@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useHourlyStatistics, useCurrentSummary } from '../../controllers/useStatistics';
+import ExportButton from './ExportButton';
 
 function Dashboard() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -46,6 +47,22 @@ function Dashboard() {
           </div>
         </div>
       )}
+
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        marginBottom: '20px', padding: '15px', background: '#dcdee2', borderRadius: '8px'
+      }}>
+        <label style={{ fontSize: '14px', fontWeight: '500' }}>
+          Seleccionar fecha:
+          <input
+            type="date"
+            value={selectedDate.toISOString().split('T')[0]}
+            onChange={(e) => setSelectedDate(new Date(e.target.value))}
+            style={{ marginLeft: '10px', padding: '8px 12px', border: '1px solid #dcdee2', borderRadius: '6px' }}
+          />
+        </label>
+         {<ExportButton startDate={selectedDate} endDate={selectedDate} />} 
+      </div>
 
       <footer style={{
         marginTop: '40px', padding: '20px', background: '#ffffff', borderRadius: '8px',
