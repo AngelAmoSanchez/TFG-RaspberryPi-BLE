@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useHourlyStatistics, useCurrentSummary } from '../../controllers/useStatistics';
+import ZoneChart from './ZoneChart';
 import ExportButton from './ExportButton';
 
 function Dashboard() {
@@ -63,6 +64,8 @@ function Dashboard() {
         </label>
          {<ExportButton startDate={selectedDate} endDate={selectedDate} />} 
       </div>
+
+      {data && <ZoneChart data={data.totals} title="Distribución de dispositivos por zona" />}
 
       <footer style={{
         marginTop: '40px', padding: '20px', background: '#ffffff', borderRadius: '8px',
