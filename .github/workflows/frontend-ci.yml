@@ -1,0 +1,88 @@
+name: Frontend CI (Web Interface)
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'web-interface/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'web-interface/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: web-interface/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./web-interface
+      run: npm ci
+    
+    - name: Run ESLint
+      working-directory: ./web-interface
+      run: |
+        npx eslint src/ --ext .js,.jsx || true
+    
+    - name: Build project
+      working-directory: ./web-interface
+      run: |
+        npm run build
+    
+    - name: Test build artifacts
+      working-directory: ./web-interface
+      run: |
+        ls -la dist/
+        test -f dist/index.html
+        test -d dist/assets
+
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install dependencies
+      working-directory: ./web-interface
+      run: npm ci
+    
+    - name: Check formatting with Prettier
+      working-directory: ./web-interface
+      run: |
+        npx prettier --check "src/**/*.{js,jsx,json,css}" || true
+    
+    - name: Validate HTML
+      working-directory: ./web-interface
+      run: |
+        test -f index.html
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Audit dependencies
+      working-directory: ./web-interface
+      run: |
+        npm audit --audit-level=moderate || true

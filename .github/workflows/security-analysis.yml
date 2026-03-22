@@ -41,6 +41,44 @@ jobs:
         path: bandit-report.json
         retention-days: 30
 
+  eslint-javascript:
+    name: ESLint JavaScript Security
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: web-interface/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./web-interface
+      run: npm ci
+    
+    - name: Install ESLint security plugin
+      working-directory: ./web-interface
+      run: npm install --save-dev eslint-plugin-security
+    
+    - name: Run ESLint security scan
+      working-directory: ./web-interface
+      continue-on-error: true
+      run: |
+        npx eslint src/ --ext .js,.jsx --plugin security --format json --output-file ../eslint-report.json || true
+        npx eslint src/ --ext .js,.jsx --plugin security || true
+    
+    - name: Upload ESLint report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: eslint-security-report
+        path: eslint-report.json
+        retention-days: 30
+
   dependency-check:
     name: Dependency Vulnerabilities
     runs-on: ubuntu-latest
@@ -68,4 +106,24 @@ jobs:
       with:
         name: safety-vulnerabilities-report
         path: safety-report.json
+        retention-days: 30
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: JavaScript npm audit
+      working-directory: ./web-interface
+      continue-on-error: true
+      run: |
+        npm audit --json > ../npm-audit-report.json || true
+        npm audit || true
+    
+    - name: Upload npm audit report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: npm-audit-report
+        path: npm-audit-report.json
         retention-days: 30
