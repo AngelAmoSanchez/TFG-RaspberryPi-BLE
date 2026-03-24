@@ -31,6 +31,10 @@ jobs:
         pip install -r requirements.txt
         pip install pytest pytest-asyncio
     
+    - name: Install frontend dependencies
+      working-directory: ./web-interface
+      run: npm ci
+    
     - name: Initialize database
       working-directory: ./raspberry-pi
       run: |
@@ -41,4 +45,10 @@ jobs:
       working-directory: ./raspberry-pi
       run: |
         python -c "from src.main import main;"
-        python -c "from src.config import Config;"
+        python3 -c "from src.config import AppConfig; config = AppConfig.load_default();"
+    
+    - name: Build frontend
+      working-directory: ./web-interface
+      run: |
+        npm run build
+  
