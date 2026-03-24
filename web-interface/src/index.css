@@ -8,3 +8,13 @@ body {
   font-family: Arial, sans-serif;
   background-color: #f0f0f0;
 }
+
+/* Responsive para móvil */
+@media (max-width: 768px) {
+  table {
+    font-size: 12px;
+  }
+  th, td {
+    padding: 8px !important;
+  }
+}
