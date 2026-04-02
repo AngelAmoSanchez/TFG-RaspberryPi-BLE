@@ -9,9 +9,12 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+data/*.db
 *.db
 *.sqlite
 *.sqlite3
+*.so
+*$py.class
 
 # ==========================
 # IDE & editor files
@@ -25,6 +28,7 @@ dist/
 # ==========================
 # Logs & coverage
 # ==========================
+logs/*.log
 *.log
 app.log
 deployments.log
@@ -51,3 +55,10 @@ test_file.txt
 # Custom ignores
 # ==========================
 .moduleignore
+
+# ==========================
+# Cloud deployment
+# ==========================
+.vercel/
+.railway/
+

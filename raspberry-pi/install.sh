@@ -15,21 +15,17 @@ sudo apt-get install -y \
     python3-venv \
     bluetooth \
     bluez \
-    nodejs \
-    npm \
+    git \
     sqlite3
-
 
 # Habilitar Bluetooth siempre
 echo "Habilitando Bluetooth..."
 sudo systemctl enable bluetooth
 sudo systemctl start bluetooth
 
-
 # Crear entorno virtual de Python e instalar dependencias
 echo "Configurando entorno virtual de Python..."
 PROJECT_ROOT="$(pwd)"
-cd raspberry-pi
 
 python3 -m venv --copies venv
 source venv/bin/activate
@@ -37,40 +33,26 @@ pip install --upgrade pip -qq
 pip install -r requirements.txt -qq
 
 echo "Otorgando permisos BLE al proyecto..."
-sudo setcap cap_net_raw,cap_net_admin+eip "$PROJECT_ROOT/raspberry-pi/venv/bin/python3"
+sudo setcap cap_net_raw,cap_net_admin+eip "$PROJECT_ROOT/venv/bin/python3"
 
-# Inicializar la base de datos
-echo "Inicializando la base de datos..."
-python3 << 'PYEOF'
-import asyncio
-from src.infrastructure.repository import SQLiteDeviceRepository
+# Crear los directorios necesarios
+echo "Creando directorios de trabajo..."
+mkdir -p logs data
 
-async def init():
-    repo = SQLiteDeviceRepository()
-    await repo.initialize()
-    print("OK - Base de datos inicializada")
-
-asyncio.run(init())
-PYEOF
-
-# Crear los demás directorios necesarios
-mkdir -p data exports logs
+# Copiar archivo de configuración de ejemplo
+if [ ! -f ".env" ]; then
+    if [ -f ".env.example" ]; then
+        echo "Creando archivo de configuración..."
+        cp .env.example .env
+        echo "IMPORTANTE - Edita el archivo .env con las credenciales correctas"
+    fi
+fi
 
 deactivate
-cd ..
-
-# Instalar dependencias del frontend
-echo "Instalando dependencias del frontend..."
-cd web-interface
-npm install > /dev/null 2>&1
-echo "OK: Dependencias del frontend instaladas"
-cd ..
-
-
 
 # Configurar servicio systemd para auto-inicio
 echo "Configurando inicio automático (systemd)..."
-SYSTEMD_FILE="/etc/systemd/system/bluetooth-counter.service"
+SYSTEMD_FILE="/etc/systemd/system/iot-agent.service"
 
 sudo tee $SYSTEMD_FILE > /dev/null << EOF
 [Unit]
@@ -83,19 +65,21 @@ BindsTo=bluetooth.target
 [Service]
 Type=exec
 User=$USER
-WorkingDirectory=$(pwd)/raspberry-pi
+WorkingDirectory=$PROJECT_ROOT
 
 ExecStartPre=/bin/sleep 5
-ExecStart=$(pwd)/raspberry-pi/venv/bin/python3 -m src.main
+ExecStart=$PROJECT_ROOT/venv/bin/python3 -m src.main
 
 Restart=always
 RestartSec=15
 StartLimitBurst=10
 StartLimitInterval=200
 
-StandardOutput=append:$(pwd)/raspberry-pi/logs/system.log
-StandardError=append:$(pwd)/raspberry-pi/logs/error.log
-SyslogIdentifier=bluetooth-counter
+StandardOutput=append:$PROJECT_ROOT/logs/system.log
+StandardError=append:$PROJECT_ROOT/logs/error.log
+SyslogIdentifier=iot-agent
+
+Environment="PYTHONUNBUFFERED=1"
 
 TimeoutStartSec=30
 TimeoutStopSec=10
@@ -107,16 +91,18 @@ EOF
 # Recargar todo el systemd
 sudo systemctl daemon-reload
 
-
-
 echo ""
 echo "=================== Instalación completada ==================="
 echo ""
 echo "Para ejecutar el sistema:"
-echo "  Manual:"
-echo "   ./scripts/run_system.sh"
+echo "     - Primero editar archivo de configuración: nano .env"
 echo ""
-echo "  Automático (al iniciar la Raspberry Pi):"
-echo "   ./scripts/setup_autostart.sh"
+echo "     Manual:"
+echo "       ./scripts/run_system.sh"
 echo ""
-
+echo "     Automático (al iniciar la Raspberry Pi):"
+echo "       ./scripts/setup_autostart.sh"
+echo ""
+echo "     Ver logs:"
+echo "       tail -f logs/system.log"
+echo ""
