@@ -37,9 +37,7 @@ class Detection:
         if self.rssi > 0:
             raise ValueError(f"RSSI tiene que ser negativo, se obtuvo {self.rssi}")
         if self.rssi < -100:
-            raise ValueError(
-                f"RSSI demasiado bajo (fuera de rango), se obtuvo {self.rssi}"
-            )
+            raise ValueError(f"RSSI demasiado bajo (fuera de rango), se obtuvo {self.rssi}")
 
     def to_dict(self) -> dict:
         """Serializa la detección a diccionario"""
