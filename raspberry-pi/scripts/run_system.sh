@@ -50,7 +50,7 @@ trap cleanup SIGINT SIGTERM
 # Iniciar agente IoT
 echo "Iniciando IoT Agent..."
 source venv/bin/activate
-python3 -m src.main &
+python src/main.py &
 AGENT_PID=$!
 
 sleep 5  # Esperar a que el agente esté listo
