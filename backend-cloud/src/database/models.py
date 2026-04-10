@@ -10,7 +10,7 @@ Base = declarative_base()
 
 
 class ZoneEnum(str, enum.Enum):
-    """ Zonas de proximidad según la señal RSSI """
+    """Zonas de proximidad según la señal RSSI"""
 
     NEAR = "near"
     MEDIUM = "medium"
