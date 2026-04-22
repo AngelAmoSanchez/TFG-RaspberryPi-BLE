@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: tfg-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: tfg_detections
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: tfg-backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/tfg_detections
+      ENVIRONMENT: development
+      DEBUG: "true"
+      MQTT_ENABLED: "false"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  postgres_data:
