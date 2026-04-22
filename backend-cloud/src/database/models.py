@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import Float, Index, Integer, String
+from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -25,9 +26,14 @@ class Detection(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     device_hash = Column(String(64), nullable=False, index=True)
     rssi = Column(Integer, nullable=False)
-    zone = Column(SQLEnum(ZoneEnum), nullable=False, index=True)
+    zone = Column(
+        SQLEnum(ZoneEnum, native_enum=False, create_constraint=False), nullable=False, index=True
+    )
     timestamp = Column(
-        DateTime, nullable=False, index=True, default=lambda: datetime.now(timezone.utc)
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        index=True,
+        default=lambda: datetime.now(timezone.utc),
     )
     device_id = Column(String(50), nullable=False, index=True)
 
@@ -59,10 +65,12 @@ class Device(Base):
     name = Column(String(100), nullable=True)
     location = Column(String(200), nullable=True)
     is_active = Column(Integer, default=1)  # 1=activo, 0=inactivo
-    last_seen = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    last_seen = Column(TIMESTAMP(timezone=True), nullable=True)
+    created_at = Column(
+        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
     updated_at = Column(
-        DateTime,
+        TIMESTAMP(timezone=True),
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
@@ -88,14 +96,16 @@ class AggregatedStats(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     period_type = Column(String(20), nullable=False)  # 'hour', 'day', 'week'
-    period_start = Column(DateTime, nullable=False, index=True)
-    period_end = Column(DateTime, nullable=False)
+    period_start = Column(TIMESTAMP(timezone=True), nullable=False, index=True)
+    period_end = Column(TIMESTAMP(timezone=True), nullable=False)
     zone = Column(SQLEnum(ZoneEnum), nullable=False)
     unique_devices = Column(Integer, nullable=False, default=0)
     total_detections = Column(Integer, nullable=False, default=0)
     estimated_people = Column(Integer, nullable=False, default=0)
     avg_rssi = Column(Float, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
 
     __table_args__ = (Index("idx_period_zone", "period_type", "period_start", "zone"),)
 
