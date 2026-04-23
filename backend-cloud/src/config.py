@@ -34,7 +34,12 @@ class Settings(BaseSettings):
     websocket_enabled: bool = os.getenv("WEBSOCKET_ENABLED", "true").lower() == "true"
 
     # CORS
-    cors_origins: list = ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:5173", "https://*.vercel.app"]
+    cors_origins: list = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://*.vercel.app",
+    ]
 
     # Seguridad
     secret_key: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")

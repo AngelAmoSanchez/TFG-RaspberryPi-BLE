@@ -1,6 +1,7 @@
 """
 Export routes - CSV download endpoints
 """
+
 import csv
 import io
 from datetime import datetime, timedelta, timezone
@@ -33,18 +34,18 @@ async def export_detections_csv(
 ):
     """
     Exporta detecciones a CSV con filtros flexibles.
-    
+
     Prioridad de filtros de tiempo:
     1. start_date + end_date (rango específico)
     2. last_minutes (últimos N minutos)
-    3. last_hours (últimas N horas)  
+    3. last_hours (últimas N horas)
     4. last_days (últimos N días)
     5. Por defecto: últimas 24 horas
     """
-    
+
     # Determinar rango de tiempo
     end_time = datetime.now(timezone.utc)
-    
+
     if start_date and end_date:
         # Rango específico de fechas
         start_time = datetime.fromisoformat(start_date).replace(tzinfo=timezone.utc)
@@ -60,15 +61,12 @@ async def export_detections_csv(
     else:
         # Por defecto: últimas 24 horas
         start_time = end_time - timedelta(hours=24)
-    
+
     # Construir query
     query = select(Detection).where(
-        and_(
-            Detection.timestamp >= start_time,
-            Detection.timestamp <= end_time
-        )
+        and_(Detection.timestamp >= start_time, Detection.timestamp <= end_time)
     )
-    
+
     # Aplicar filtros adicionales
     if zone:
         try:
@@ -76,52 +74,47 @@ async def export_detections_csv(
             query = query.where(Detection.zone == zone_enum.value)
         except ValueError:
             pass  # Ignorar zona inválida
-    
+
     if device_id:
         query = query.where(Detection.device_id == device_id)
-    
+
     # Ordenar por timestamp descendente
     query = query.order_by(Detection.timestamp.desc())
-    
+
     # Ejecutar query
     result = await db.execute(query)
     detections = result.scalars().all()
-    
+
     # Crear CSV en memoria
     output = io.StringIO()
     writer = csv.writer(output)
-    
+
     # Escribir encabezados
-    writer.writerow([
-        'ID',
-        'Device Hash',
-        'RSSI (dBm)',
-        'Zone',
-        'Timestamp',
-        'Device ID (IoT)',
-        'Date',
-        'Time'
-    ])
-    
+    writer.writerow(
+        ["ID", "Device Hash", "RSSI (dBm)", "Zone", "Timestamp", "Device ID (IoT)", "Date", "Time"]
+    )
+
     # Escribir datos
     for detection in detections:
         timestamp = detection.timestamp
-        writer.writerow([
-            detection.id,
-            detection.device_hash,
-            detection.rssi,
-            detection.zone,
-            timestamp.isoformat(),
-            detection.device_id,
-            timestamp.strftime('%Y-%m-%d'),
-            timestamp.strftime('%H:%M:%S')
-        ])
-    
+        writer.writerow(
+            [
+                detection.id,
+                detection.device_hash,
+                detection.rssi,
+                detection.zone,
+                timestamp.isoformat(),
+                detection.device_id,
+                timestamp.strftime("%Y-%m-%d"),
+                timestamp.strftime("%H:%M:%S"),
+            ]
+        )
+
     # Preparar respuesta
     output.seek(0)
-    
+
     # Nombre del archivo basado en filtros
-    filename_parts = ['detections']
+    filename_parts = ["detections"]
     if start_date and end_date:
         filename_parts.append(f"{start_date}_to_{end_date}")
     elif last_minutes:
@@ -132,17 +125,17 @@ async def export_detections_csv(
         filename_parts.append(f"last_{last_days}d")
     else:
         filename_parts.append("last_24h")
-    
+
     if zone:
         filename_parts.append(f"zone_{zone}")
-    
+
     filename = "_".join(filename_parts) + ".csv"
-    
+
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
         headers={
             "Content-Disposition": f"attachment; filename={filename}",
-            "Content-Type": "text/csv; charset=utf-8"
-        }
+            "Content-Type": "text/csv; charset=utf-8",
+        },
     )
