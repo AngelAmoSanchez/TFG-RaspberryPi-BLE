@@ -37,9 +37,15 @@ docker-down:
 docker-logs:
 	docker compose logs -f backend
 
+docker-rebuild:
+	docker compose down
+	docker compose build --no-cache backend
+	docker compose up -d
+
 format:
 	black src/ tests/ --line-length=100
 	isort src/ tests/ --profile black
+
 lint:
 	flake8 src/ tests/
 	mypy src/ --ignore-missing-imports

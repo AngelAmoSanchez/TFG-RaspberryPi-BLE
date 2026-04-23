@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import detections, devices, statistics
+from src.api.routes import detections, devices, export, statistics
 from src.config import settings
 from src.database.connection import close_db, init_db
 from src.mqtt.subscriber import start_mqtt_subscriber
@@ -66,6 +66,7 @@ app.add_middleware(
 app.include_router(detections.router, prefix=f"/api/{settings.api_version}")
 app.include_router(statistics.router, prefix=f"/api/{settings.api_version}")
 app.include_router(devices.router, prefix=f"/api/{settings.api_version}")
+app.include_router(export.router, prefix=f"/api/{settings.api_version}")
 
 
 @app.get("/")
