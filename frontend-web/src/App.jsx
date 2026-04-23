@@ -1,9 +1,10 @@
 import React from 'react';
 import Dashboard from './components/Dashboard';
+import './index.css';
 
 function App() {
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+    <div className="App">
       <Dashboard />
     </div>
   );
