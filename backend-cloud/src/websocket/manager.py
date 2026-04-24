@@ -3,8 +3,8 @@ import logging
 from typing import Set
 
 from fastapi import WebSocket
-from ..utils import timezone_utils
 
+from ..utils import timezone_utils
 
 logger = logging.getLogger(__name__)
 

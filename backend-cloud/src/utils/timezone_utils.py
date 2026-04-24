@@ -14,7 +14,7 @@ SPAIN_TZ = ZoneInfo("Europe/Madrid")
 def now() -> datetime:
     """
     Devuelve la hora actual en zona horaria de España
-    
+
     Returns:
         datetime: Hora actual en Europe/Madrid con tzinfo
     """
@@ -25,7 +25,7 @@ def utc_now() -> datetime:
     """
     Devuelve la hora actual en UTC
     Solo usar si específicamente necesitas UTC
-    
+
     Returns:
         datetime: Hora actual en UTC con tzinfo
     """
@@ -35,10 +35,10 @@ def utc_now() -> datetime:
 def ensure_spain_tz(dt: datetime) -> datetime:
     """
     Asegura que un datetime tiene timezone de España
-    
+
     Args:
         dt: datetime con o sin timezone
-        
+
     Returns:
         datetime con timezone Europe/Madrid
     """
@@ -53,10 +53,10 @@ def ensure_spain_tz(dt: datetime) -> datetime:
 def to_spain_tz(dt: datetime) -> datetime:
     """
     Convierte un datetime a zona horaria de España
-    
+
     Args:
         dt: datetime con timezone
-        
+
     Returns:
         datetime convertido a Europe/Madrid
     """
@@ -70,15 +70,15 @@ def to_spain_tz(dt: datetime) -> datetime:
 def parse_datetime(dt_str: str) -> datetime:
     """
     Parsea un string ISO a datetime con timezone de España
-    
+
     Args:
         dt_str: String en formato ISO (ej: "2026-04-24T15:00:00")
-        
+
     Returns:
         datetime con timezone Europe/Madrid
     """
     # Parsear string
-    dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
-    
+    dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+
     # Asegurar timezone de España
     return ensure_spain_tz(dt)

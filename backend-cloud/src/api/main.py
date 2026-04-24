@@ -9,8 +9,8 @@ from src.api.routes import detections, devices, export, statistics
 from src.config import settings
 from src.database.connection import close_db, init_db
 from src.mqtt.subscriber import start_mqtt_subscriber
-from src.websocket.manager import ws_manager
 from src.utils import timezone_utils
+from src.websocket.manager import ws_manager
 
 # Configurar estrructura de logs
 logging.basicConfig(

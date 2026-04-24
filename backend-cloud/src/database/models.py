@@ -10,6 +10,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+
 # Función helper para defaults en SQLAlchemy
 def _get_spain_now():
     """Helper para defaults de timestamp en modelos"""
@@ -72,9 +73,7 @@ class Device(Base):
     location = Column(String(200), nullable=True)
     is_active = Column(Integer, default=1)  # 1=activo, 0=inactivo
     last_seen = Column(TIMESTAMP(timezone=True), nullable=True)
-    created_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, default=_get_spain_now
-    )
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, default=_get_spain_now)
     updated_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
@@ -109,9 +108,7 @@ class AggregatedStats(Base):
     total_detections = Column(Integer, nullable=False, default=0)
     estimated_people = Column(Integer, nullable=False, default=0)
     avg_rssi = Column(Float, nullable=True)
-    created_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, default=_get_spain_now
-    )
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, default=_get_spain_now)
 
     __table_args__ = (Index("idx_period_zone", "period_type", "period_start", "zone"),)
 

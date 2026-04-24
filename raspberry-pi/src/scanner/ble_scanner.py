@@ -15,8 +15,9 @@ except ImportError:
     BLEDevice = None
     AdvertisementData = None
 
-from .detection import Detection
 from zoneinfo import ZoneInfo
+
+from .detection import Detection
 
 SPAIN_TZ = ZoneInfo("Europe/Madrid")
 

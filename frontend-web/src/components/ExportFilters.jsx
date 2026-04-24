@@ -238,6 +238,14 @@ const ExportFilters = () => {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
+
+          {startDate && endDate && new Date(startDate) > new Date(endDate) && (
+            <div className="p-2 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-xs text-red-600">
+                ⚠️ La fecha de inicio debe ser anterior a la fecha de fin
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -276,7 +284,8 @@ const ExportFilters = () => {
 
       <button
         onClick={handleExport}
-        disabled={isExporting || (filterMode === 'range' && (!startDate || !endDate))}
+        disabled={isExporting || (filterMode === 'range' && (!startDate || !endDate)) ||
+          (filterMode === 'range' && startDate && endDate && new Date(startDate) > new Date(endDate))}
         className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
       >
         {isExporting ? (
