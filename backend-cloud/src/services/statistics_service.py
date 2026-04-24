@@ -138,6 +138,76 @@ class StatisticsService:
         )
         return stats
 
+    async def get_range_stats(
+        self, db: AsyncSession, start_time: datetime, end_time: datetime
+    ) -> Dict:
+        """Obtiene estadísticas para un rango de fechas específico
+
+        Args:
+            db: Sesión de base de datos
+            start_time: Fecha y hora de inicio
+            end_time: Fecha y hora de fin
+
+        Devuelve:
+            Diccionario con estadísticas por zona y totales
+        """
+        # Asegurar que las fechas tienen timezone de España
+        start_time = timezone_utils.ensure_spain_tz(start_time)
+        end_time = timezone_utils.ensure_spain_tz(end_time)
+
+        # Consulta para obtener estadísticas por zona
+        query = (
+            select(
+                Detection.zone,
+                func.count(func.distinct(Detection.device_hash)).label("unique_devices"),
+                func.count(Detection.id).label("total_detections"),
+                func.avg(Detection.rssi).label("avg_rssi"),
+            )
+            .where(and_(Detection.timestamp >= start_time, Detection.timestamp <= end_time))
+            .group_by(Detection.zone)
+        )
+
+        result = await db.execute(query)
+        rows = result.all()
+
+        # Procesar por zona
+        by_zone = {}
+        total_unique_devices = 0
+        total_detections = 0
+
+        for row in rows:
+            zone_name = row.zone.value if isinstance(row.zone, ZoneEnum) else row.zone
+            unique_devices = row.unique_devices
+
+            by_zone[zone_name] = {
+                "unique_devices": unique_devices,
+                "total_detections": row.total_detections,
+                "estimated_people": self.estimate_people(unique_devices),
+                "avg_rssi": round(row.avg_rssi, 2) if row.avg_rssi else None,
+            }
+
+            total_unique_devices += unique_devices
+            total_detections += row.total_detections
+
+        # Calcular totales
+        stats = {
+            "timestamp": timezone_utils.now().isoformat(),
+            "start_time": start_time.isoformat(),
+            "end_time": end_time.isoformat(),
+            "total": {
+                "unique_devices": total_unique_devices,
+                "total_detections": total_detections,
+                "estimated_people": self.estimate_people(total_unique_devices),
+                "avg_rssi": None,
+            },
+            "by_zone": by_zone,
+        }
+
+        logger.info(
+            f"Estadísticas de rango generadas: {total_unique_devices} dispositivos únicos entre {start_time} y {end_time}"
+        )
+        return stats
+
     async def get_real_time_stats(self, db: AsyncSession, minutes: int = 5) -> Dict:
         """Obtiene estadísticas en tiempo real para los últimos N minutos
 

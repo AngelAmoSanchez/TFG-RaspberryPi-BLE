@@ -98,6 +98,22 @@ class ApiService {
   }
 
   /**
+   * Obtiene estadísticas para un rango específico de fecha y hora
+   * @param {string} startDateTime - Fecha y hora de inicio en formato ISO (YYYY-MM-DDTHH:mm:ss)
+   * @param {string} endDateTime - Fecha y hora de fin en formato ISO (YYYY-MM-DDTHH:mm:ss)
+   * @returns {object} - Estadísticas agrupadas por zona para el rango específico
+   */
+  async getRangeStats(startDateTime, endDateTime) {
+    const response = await this.client.get('/api/v1/statistics/range', {
+      params: { 
+        start_time: startDateTime,
+        end_time: endDateTime
+      }
+    });
+    return response.data;
+  }
+
+  /**
    * Obtiene la distribución de zonas
    * @param {number} hours - Horas para retroceder (por defecto 24 horas)
    * @returns {object} - Distribución de personas por zona

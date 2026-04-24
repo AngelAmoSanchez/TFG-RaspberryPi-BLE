@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...database.connection import get_db
 from ...services.statistics_service import StatisticsService
-from zoneinfo import ZoneInfo
 
 SPAIN_TZ = ZoneInfo("Europe/Madrid")
 
@@ -14,11 +14,45 @@ router = APIRouter(prefix="/statistics", tags=["statistics"])
 
 @router.get("/realtime")
 async def get_realtime_stats(
-    minutes: int = Query(5, ge=1, le=60), db: AsyncSession = Depends(get_db)
+    minutes: int = Query(5, ge=1, le=10080),
+    db: AsyncSession = Depends(get_db),  # Hasta 7 días (máximo del seleccionador predeterminado)
 ):
     """Devuelve estadísticas en tiempo real para los últimos N minutos"""
     service = StatisticsService()
     stats = await service.get_real_time_stats(db, minutes)
+    return stats
+
+
+@router.get("/range")
+async def get_range_stats(
+    start_time: str = Query(
+        ..., description="Fecha y hora de inicio en formato ISO (ej: 2026-04-23T10:00:00)"
+    ),
+    end_time: str = Query(
+        ..., description="Fecha y hora de fin en formato ISO (ej: 2026-04-23T12:00:00)"
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Devuelve estadísticas para un rango específico de fechas y horas"""
+
+    try:
+        # Parsear las fechas
+        start_dt = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+        end_dt = datetime.fromisoformat(end_time.replace("Z", "+00:00"))
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Formato de fecha inválido. Use formato ISO: YYYY-MM-DDTHH:MM:SS. Error: {str(e)}",
+        )
+
+    # Validar que start_time < end_time
+    if start_dt >= end_dt:
+        raise HTTPException(
+            status_code=400, detail="La fecha de inicio debe ser anterior a la fecha de fin"
+        )
+
+    service = StatisticsService()
+    stats = await service.get_range_stats(db, start_dt, end_dt)
     return stats
 
 
