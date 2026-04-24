@@ -12,8 +12,9 @@ except ImportError:
     MQTT_AVAILABLE = False
     mqtt = None
 
-from scanner.detection import Device
 from zoneinfo import ZoneInfo
+
+from scanner.detection import Device
 
 SPAIN_TZ = ZoneInfo("Europe/Madrid")
 
@@ -250,3 +251,64 @@ class MQTTClient:
     def get_buffer_size(self) -> int:
         """Devuelve el tamaño actual del buffer"""
         return len(self._buffer)
+
+
+class MockMQTTClient:
+    """Mock MQTT client para simular la publicación exitosa y logueo de mensajes"""
+
+    def __init__(self, device_id: str, **kwargs):
+        """
+        Args:
+            device_id: ID del dispositivo
+            **kwargs: Ignorados (compatibilidad con MQTTClient real)
+        """
+        self.device_id = device_id
+        self._connected = True
+        logger.info(f"[MOCK] Cliente MQTT inicializado (device: {device_id})")
+
+    def connect(self) -> bool:
+        """Simula conexión exitosa"""
+        logger.info("OK - [MOCK] MQTT conectado (simulado)")
+        self._connected = True
+        return True
+
+    def disconnect(self):
+        """Simula desconexión"""
+        logger.info("OK - [MOCK] MQTT desconectado (simulado)")
+        self._connected = False
+
+    def publish_detections(self, detections: List[Device]) -> bool:
+        """Simula publicación de detecciones
+
+        Args:
+            detections: Lista de detecciones
+
+        Devuelve:
+            True siempre (simula éxito)
+        """
+        if not detections:
+            return True
+
+        logger.info(
+            f"OK - [MOCK] Publicará {len(detections)} detecciones " f"(device: {self.device_id})"
+        )
+
+        for det in detections[:3]:
+            logger.debug(
+                f"  [MOCK] Hash: {det.device_hash[:16]}... | "
+                f"RSSI: {det.rssi:3d} dBm | "
+                f"Zona: {det.zone.value}"
+            )
+
+        if len(detections) > 3:
+            logger.debug(f"  [MOCK] ... y {len(detections) - 3} más")
+
+        return True
+
+    def is_connected(self) -> bool:
+        """Devuelve True siempre (simula conexión)"""
+        return self._connected
+
+    def get_buffer_size(self) -> int:
+        """Devuelve 0 siempre (no hay buffer en mock)"""
+        return 0
