@@ -1,11 +1,12 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Dict, List
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database.models import Detection, ZoneEnum
+from ..utils import timezone_utils
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +109,7 @@ class DetectionProcessorService:
             rssi=rssi,
             zone=zone_enum,
             device_id=device_id,
-            timestamp=timestamp or datetime.now(timezone.utc),
+            timestamp=timestamp or timezone_utils.now(),
         )
 
         db.add(detection)
@@ -138,9 +139,9 @@ class DetectionProcessorService:
                 # Parsear marcas de tiempo
                 timestamp_str = data.get("timestamp")
                 if timestamp_str:
-                    timestamp = datetime.fromisoformat(timestamp_str)
+                    timestamp = timezone_utils.parse_datetime(timestamp_str)
                 else:
-                    timestamp = datetime.now(timezone.utc)
+                    timestamp = timezone_utils.now()
 
                 # Crear detección
                 detection = Detection(

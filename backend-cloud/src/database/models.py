@@ -1,5 +1,6 @@
 import enum
-from datetime import datetime, timezone
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import Column, DateTime
 from sqlalchemy import Enum as SQLEnum
@@ -8,6 +9,11 @@ from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
+
+# Función helper para defaults en SQLAlchemy
+def _get_spain_now():
+    """Helper para defaults de timestamp en modelos"""
+    return datetime.now(ZoneInfo("Europe/Madrid"))
 
 
 class ZoneEnum(str, enum.Enum):
@@ -33,7 +39,7 @@ class Detection(Base):
         TIMESTAMP(timezone=True),
         nullable=False,
         index=True,
-        default=lambda: datetime.now(timezone.utc),
+        default=_get_spain_now,
     )
     device_id = Column(String(50), nullable=False, index=True)
 
@@ -67,13 +73,13 @@ class Device(Base):
     is_active = Column(Integer, default=1)  # 1=activo, 0=inactivo
     last_seen = Column(TIMESTAMP(timezone=True), nullable=True)
     created_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        TIMESTAMP(timezone=True), nullable=False, default=_get_spain_now
     )
     updated_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=_get_spain_now,
+        onupdate=_get_spain_now,
     )
 
     def to_dict(self) -> dict:
@@ -104,7 +110,7 @@ class AggregatedStats(Base):
     estimated_people = Column(Integer, nullable=False, default=0)
     avg_rssi = Column(Float, nullable=True)
     created_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        TIMESTAMP(timezone=True), nullable=False, default=_get_spain_now
     )
 
     __table_args__ = (Index("idx_period_zone", "period_type", "period_start", "zone"),)

@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Dict, List
 
 from sqlalchemy import and_, func, select
@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..database.models import AggregatedStats, Detection, ZoneEnum
+from ..utils import timezone_utils
 
 logger = logging.getLogger(__name__)
 
@@ -147,8 +148,9 @@ class StatisticsService:
         Devuelve:
             Diccionario con estadísticas por zona y totales
         """
-        now = datetime.now(timezone.utc)
+        now = timezone_utils.now()
         start_time = now - timedelta(minutes=minutes)
+        end_time = now + timedelta(seconds=1)
 
         # Consulta para agrupar por zona
         query = (
@@ -158,7 +160,7 @@ class StatisticsService:
                 func.count(Detection.id).label("total_detections"),
                 func.avg(Detection.rssi).label("avg_rssi"),
             )
-            .where(Detection.timestamp >= start_time)
+            .where(and_(Detection.timestamp >= start_time, Detection.timestamp < end_time))
             .group_by(Detection.zone)
         )
 
@@ -183,6 +185,10 @@ class StatisticsService:
 
             total_unique += unique_devices
             total_detections += row.total_detections
+
+        logger.info(
+            f"Estadísticas en tiempo real: {total_unique} dispositivos únicos de {start_time.strftime('%H:%M:%S')} a {now.strftime('%H:%M:%S')} (ventana de {minutes} minutos)"
+        )
 
         return {
             "timestamp": now.isoformat(),

@@ -1,6 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +10,7 @@ from src.config import settings
 from src.database.connection import close_db, init_db
 from src.mqtt.subscriber import start_mqtt_subscriber
 from src.websocket.manager import ws_manager
+from src.utils import timezone_utils
 
 # Configurar estrructura de logs
 logging.basicConfig(
@@ -85,7 +86,7 @@ async def health_check():
     """Health check endpoint"""
     return {
         "status": "healthy",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": timezone_utils.now().isoformat(),
         "websocket_connections": ws_manager.get_connection_count(),
     }
 

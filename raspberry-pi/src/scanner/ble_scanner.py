@@ -16,6 +16,9 @@ except ImportError:
     AdvertisementData = None
 
 from .detection import Detection
+from zoneinfo import ZoneInfo
+
+SPAIN_TZ = ZoneInfo("Europe/Madrid")
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +60,7 @@ class BLEScanner:
                         self._devices_cache[device.address] = Detection(
                             mac_address=device.address,
                             rssi=rssi,
-                            timestamp=datetime.now(),
+                            timestamp=datetime.now(SPAIN_TZ),
                             device_name=device.name,
                         )
                 else:
@@ -66,7 +69,7 @@ class BLEScanner:
                         self._devices_cache[device.address] = Detection(
                             mac_address=device.address,
                             rssi=rssi,
-                            timestamp=datetime.now(),
+                            timestamp=datetime.now(SPAIN_TZ),
                             device_name=device.name,
                         )
                     except ValueError as e:
@@ -147,7 +150,7 @@ class MockBLEScanner:
         selected_devices = random.sample(self._mock_devices, num_to_detect)
 
         detections = []
-        timestamp = datetime.now()
+        timestamp = datetime.now(SPAIN_TZ)
 
         for mac, name, base_rssi in selected_devices:
             # Añadimos diferentes valores de RSSI (en rango de 5 dBm)

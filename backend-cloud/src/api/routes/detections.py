@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -9,6 +9,7 @@ from ...database.connection import get_db
 from ...database.models import ZoneEnum
 from ...services.detection_processor import DetectionProcessorService
 from ...services.device_service import DeviceService
+from ...utils import timezone_utils
 
 router = APIRouter(prefix="/detections", tags=["detections"])
 
@@ -83,7 +84,7 @@ async def get_detection_count(
     """Devuelve el número de dispositivos únicos detectados en un rango de tiempo y zona"""
     service = DetectionProcessorService()
 
-    end_time = datetime.now(timezone.utc)
+    end_time = timezone_utils.now()
     start_time = end_time - timedelta(hours=hours)
 
     try:

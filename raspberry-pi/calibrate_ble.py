@@ -7,6 +7,9 @@ import asyncio
 from datetime import datetime
 from bleak import BleakScanner
 from collections import defaultdict
+from zoneinfo import ZoneInfo
+
+SPAIN_TZ = ZoneInfo("Europe/Madrid")
 
 
 def classify_distance(rssi):
@@ -55,11 +58,11 @@ async def main():
         
         # Actualizar historial
         if devices_history[addr]['first_seen'] is None:
-            devices_history[addr]['first_seen'] = datetime.now()
+            devices_history[addr]['first_seen'] = datetime.now(SPAIN_TZ)
         
         devices_history[addr]['name'] = name
         devices_history[addr]['rssi_values'].append(rssi)
-        devices_history[addr]['last_seen'] = datetime.now()
+        devices_history[addr]['last_seen'] = datetime.now(SPAIN_TZ)
         
         # Clasificar
         dist_label = classify_distance(rssi)
@@ -70,11 +73,11 @@ async def main():
     # Escanear
     scanner = BleakScanner(detection_callback=callback)
     
-    start_time = datetime.now()
+    start_time = datetime.now(SPAIN_TZ)
     await scanner.start()
     await asyncio.sleep(duration)
     await scanner.stop()
-    end_time = datetime.now()
+    end_time = datetime.now(SPAIN_TZ)
     
     # Resultados
     print()

@@ -13,6 +13,9 @@ except ImportError:
     mqtt = None
 
 from scanner.detection import Device
+from zoneinfo import ZoneInfo
+
+SPAIN_TZ = ZoneInfo("Europe/Madrid")
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +69,7 @@ class MQTTClient:
     def connect(self) -> bool:
         """Conecta al broker MQTT
 
-        Returns:
+        Devuelve:
             True si se conecta exitosamente, False si no pudo conectarse
         """
         try:
@@ -125,7 +128,7 @@ class MQTTClient:
         Args:
             detections: Lista de detecciones ya procesadas
 
-        Returns:
+        Devuelve:
             True si se publicó exitosamente (o se guardó en buffer)
         """
         if not detections:
@@ -135,7 +138,7 @@ class MQTTClient:
         # Crear mensaje MQTT
         message = {
             "device_id": self.device_id,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(SPAIN_TZ).isoformat(),
             "detections": [det.to_dict() for det in detections],
         }
 
@@ -155,7 +158,7 @@ class MQTTClient:
         Args:
             message: Diccionario con datos a publicar
 
-        Returns:
+        Devuelve:
             True si se publicó exitosamente
         """
         try:
@@ -185,7 +188,7 @@ class MQTTClient:
         Args:
             message: Mensaje a guardar
 
-        Returns:
+        Devuelve:
             True si se guardó exitosamente
         """
         if len(self._buffer) >= self.max_buffer_size:

@@ -4,7 +4,7 @@ Export routes - CSV download endpoints
 
 import csv
 import io
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...database.connection import get_db
 from ...database.models import Detection, ZoneEnum
+from ...utils import timezone_utils
 
 router = APIRouter(prefix="/export", tags=["export"])
 
@@ -44,12 +45,12 @@ async def export_detections_csv(
     """
 
     # Determinar rango de tiempo
-    end_time = datetime.now(timezone.utc)
+    end_time = timezone_utils.now()
 
     if start_date and end_date:
         # Rango específico de fechas
-        start_time = datetime.fromisoformat(start_date).replace(tzinfo=timezone.utc)
-        end_time = datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc)
+        start_time = timezone_utils.parse_datetime(start_date)
+        end_time = timezone_utils.parse_datetime(end_date)
         # Asegurar que end_time incluye todo el día
         end_time = end_time.replace(hour=23, minute=59, second=59)
     elif last_minutes:

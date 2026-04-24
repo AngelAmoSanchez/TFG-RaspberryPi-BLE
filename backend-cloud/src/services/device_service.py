@@ -1,11 +1,12 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database.models import Device
+from ..utils import timezone_utils
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ class DeviceService:
             name=name or device_id,
             location=location,
             is_active=1,
-            last_seen=datetime.now(timezone.utc),
+            last_seen=timezone_utils.now(),
         )
 
         db.add(device)
@@ -79,7 +80,7 @@ class DeviceService:
         device = await self.get_device(db, device_id)
 
         if device:
-            device.last_seen = datetime.now(timezone.utc)
+            device.last_seen = timezone_utils.now()
             device.is_active = 1
             await db.flush()
             logger.debug(f"Actualizado last_seen para {device_id}")
@@ -122,7 +123,7 @@ class DeviceService:
         Devuelve:
             Lista de objetos Device activos
         """
-        threshold = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
+        threshold = timezone_utils.now() - timedelta(minutes=threshold_minutes)
 
         query = (
             select(Device).where(Device.last_seen >= threshold).order_by(Device.last_seen.desc())
@@ -166,7 +167,7 @@ class DeviceService:
 
         if device:
             device.is_active = 1
-            device.updated_at = datetime.now(timezone.utc)
+            device.updated_at = timezone_utils.now()
             await db.flush()
             logger.info(f"Dispositivo {device_id} activado")
 
@@ -194,7 +195,7 @@ class DeviceService:
             if location is not None:
                 device.location = location
 
-            device.last_seen = datetime.now(timezone.utc)
+            device.last_seen = timezone_utils.now()
             await db.flush()
 
             logger.info(f"Información del dispositivo {device_id} actualizada")

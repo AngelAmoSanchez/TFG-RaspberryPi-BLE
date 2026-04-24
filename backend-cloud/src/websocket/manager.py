@@ -1,10 +1,10 @@
 import asyncio
-import json
 import logging
-from datetime import datetime, timezone
-from typing import List, Set
+from typing import Set
 
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket
+from ..utils import timezone_utils
+
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ class WebSocketManager:
         """
         message = {
             "type": "detection_event",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": timezone_utils.now(),
             "device_id": device_id,
             "count": detections_count,
         }
@@ -98,7 +98,7 @@ class WebSocketManager:
         """
         message = {
             "type": "stats_update",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": timezone_utils.now(),
             "data": stats,
         }
 
