@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRealtimeStats } from '../hooks/useRealtimeStats';
 import { useDevices } from '../hooks/useDevices';
 import StatsCard from './StatsCard';
@@ -7,16 +7,72 @@ import DeviceList from './DeviceList';
 import ConnectionStatus from './ConnectionStatus';
 import ExportFilters from './ExportFilters';
 import TimeRangeSelector from './TimeRangeSelector';
-import { Activity, Users, Wifi, WifiOff } from 'lucide-react';
+import { Activity, Users, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 
 const Dashboard = () => {
   const [timeConfig, setTimeConfig] = useState({ mode: 'preset', value: 5 });
-  const { stats, loading, error, wsConnected, refresh } = useRealtimeStats(timeConfig);
+  
+  // Auto-refresh siempre activo en modo preset
+  const { stats, loading, error, wsConnected, refresh } = useRealtimeStats(
+    timeConfig, 
+    timeConfig.mode === 'preset' // Auto-refresh solo en modo preset
+  );
+  
   const { devices, loading: devicesLoading } = useDevices(true);
 
+  // Auto-refresh cada 30 segundos en modo preset
+  useEffect(() => {
+    if (timeConfig.mode === 'custom') return;
+    
+    const interval = setInterval(() => {
+      console.log('Recargando automáticamente las estadísticas...');
+      refresh();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [timeConfig.mode, refresh]);
+
   const handleTimeRangeChange = (newConfig) => {
-    console.log('Time range changed:', newConfig);
+    console.log('Rango de tiempo cambiado:', newConfig);
     setTimeConfig(newConfig);
+  };
+
+  // Función para obtener la descripción del filtro de tiempo
+  const getTimeFilterLabel = () => {
+    if (timeConfig.mode === 'custom' && timeConfig.startDateTime && timeConfig.endDateTime) {
+      // Formatear fechas personalizadas
+      const formatDate = (dateStr) => {
+        const date = new Date(dateStr);
+        return date.toLocaleString('es-ES', { 
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      };
+      return `${formatDate(timeConfig.startDateTime)} - ${formatDate(timeConfig.endDateTime)}`;
+    }
+    
+    // Para modo preset
+    const minutes = timeConfig.value || 5;
+    if (minutes === 1) return 'Último minuto';
+    if (minutes === 5) return 'Últimos 5 minutos';
+    if (minutes === 30) return 'Últimos 30 minutos';
+    if (minutes === 60) return 'Última hora';
+    if (minutes === 720) return 'Últimas 12 horas';
+    if (minutes === 1440) return 'Último día';
+    if (minutes === 10080) return 'Últimos 7 días';
+    
+    // Fallback para otros valores
+    if (minutes < 60) {
+      return `Últimos ${minutes} minutos`;
+    } else if (minutes < 1440) {
+      const hours = Math.floor(minutes / 60);
+      return `Últimas ${hours} hora${hours !== 1 ? 's' : ''}`;
+    } else {
+      const days = Math.floor(minutes / 1440);
+      return `Últimos ${days} día${days !== 1 ? 's' : ''}`;
+    }
   };
 
   const getTimeWindowDescription = () => {
@@ -75,7 +131,7 @@ const Dashboard = () => {
               Sistema de Detección Bluetooth
             </h1>
             <p className="text-gray-600 mt-1">
-              Monitoreo en tiempo real
+              Monitoreo en tiempo real • {getTimeFilterLabel()}
             </p>
           </div>
           
@@ -89,8 +145,9 @@ const Dashboard = () => {
 
             <button
               onClick={refresh}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2"
             >
+              <RefreshCw className="w-4 h-4" />
               Actualizar
             </button>
           </div>
@@ -179,6 +236,11 @@ const Dashboard = () => {
         <p className="mt-1">
           {getTimeWindowDescription()}
         </p>
+        {timeConfig.mode === 'preset' && (
+          <p className="mt-1 text-green-600">
+            ● Actualización automática (cada 30s)
+          </p>
+        )}
       </div>
     </div>
   );

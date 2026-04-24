@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import apiService from '../services/api';
 import websocketService from '../services/websocket';
 
@@ -8,7 +8,13 @@ export const useRealtimeStats = (timeConfig = { mode: 'preset', value: 5 }, auto
   const [error, setError] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
 
-  const { mode, value, startDate, endDate } = timeConfig;
+  const modeRef = useRef(timeConfig.mode);
+  
+  useEffect(() => {
+    modeRef.current = timeConfig.mode;
+  }, [timeConfig.mode]);
+
+  const { mode, value, startDate, endDate, startDateTime, endDateTime } = timeConfig;
 
   // Busca las estadísticas en tiempo real
   const fetchStats = useCallback(async () => {
@@ -17,78 +23,31 @@ export const useRealtimeStats = (timeConfig = { mode: 'preset', value: 5 }, auto
       setError(null);
       
       let data;
-      if (mode === 'custom' && startDate && endDate) {
-        data = await apiService.getDailyStats(startDate, endDate);
+      
+      if (mode === 'custom' && startDateTime && endDateTime) {
+        // Usar rango personalizado (fecha y hora) 
+        console.log('Buscando estadísticas para el rango personalizado:', {
+          start: startDateTime,
+          end: endDateTime
+        });
         
-        // Transformar los datos diarios al formato esperado por el dashboard
-        const transformedStats = {
-          timestamp: new Date().toISOString(),
-          time_window_minutes: 0,
-          total: {
-            unique_devices: 0,
-            total_detections: 0,
-            estimated_people: 0,
-            avg_rssi: null
-          },
-          by_zone: {}
-        };
-
-        // Añadir lógica para transformar los datos diarios en el formato esperado por el dashboard
-        if (data.statistics && Array.isArray(data.statistics)) {
-          data.statistics.forEach(dayStat => {
-            if (dayStat.by_zone) {
-              Object.entries(dayStat.by_zone).forEach(([zone, zoneData]) => {
-                if (!transformedStats.by_zone[zone]) {
-                  transformedStats.by_zone[zone] = {
-                    unique_devices: 0,
-                    total_detections: 0,
-                    estimated_people: 0,
-                    avg_rssi: []
-                  };
-                }
-                
-                transformedStats.by_zone[zone].unique_devices += zoneData.unique_devices || 0;
-                transformedStats.by_zone[zone].total_detections += zoneData.total_detections || 0;
-                transformedStats.by_zone[zone].estimated_people += zoneData.estimated_people || 0;
-                
-                if (zoneData.avg_rssi) {
-                  transformedStats.by_zone[zone].avg_rssi.push(zoneData.avg_rssi);
-                }
-              });
-            }
-            
-            transformedStats.total.unique_devices += dayStat.total?.unique_devices || 0;
-            transformedStats.total.total_detections += dayStat.total?.total_detections || 0;
-            transformedStats.total.estimated_people += dayStat.total?.estimated_people || 0;
-          });
-          
-          // Calcular el promedio de RSSI por zona
-          Object.keys(transformedStats.by_zone).forEach(zone => {
-            const rssiValues = transformedStats.by_zone[zone].avg_rssi;
-            if (rssiValues.length > 0) {
-              transformedStats.by_zone[zone].avg_rssi = 
-                rssiValues.reduce((a, b) => a + b, 0) / rssiValues.length;
-            } else {
-              transformedStats.by_zone[zone].avg_rssi = null;
-            }
-          });
-        }
+        data = await apiService.getRangeStats(startDateTime, endDateTime);
         
-        data = transformedStats;
       } else {
-        // Usar minutos predeterminados
         const minutes = value || 5;
+        console.log(`Buscando estadísticas para los últimos ${minutes} minutos...`);
+        
         data = await apiService.getRealtimeStats(minutes);
       }
       
       setStats(data);
     } catch (err) {
       setError(err.message);
-      console.error('ERROR - Error obteniendo estadísticas en tiempo real:', err);
+      console.error('ERROR - Error obteniendo estadísticas:', err);
     } finally {
       setLoading(false);
     }
-  }, [mode, value, startDate, endDate]);
+  }, [mode, value, startDate, endDate, startDateTime, endDateTime]);
 
   // Carga inicial y recarga cuando cambian los parámetros
   useEffect(() => {
@@ -99,27 +58,31 @@ export const useRealtimeStats = (timeConfig = { mode: 'preset', value: 5 }, auto
   useEffect(() => {
     if (!autoRefresh) return;
 
+    console.log('Configurando conexión WebSocket...');
+
     // Conecta con WebSocket
     websocketService.connect();
 
     // Escucha cambios en la conexión
     const handleConnectionStatus = (status) => {
+      console.log('Estado de la conexión WebSocket:', status.connected);
       setWsConnected(status.connected);
     };
 
     // Escucha actualizaciones de estadísticas
     const handleStatsUpdate = (data) => {
-      console.log('Actualización de estadísticas recibida por WebSocket:', data);
+      console.log('Actualización de estadísticas recibida via WebSocket:', data);
       // Solo actualiza si estamos en modo preset, para evitar sobrescribir datos personalizados
-      if (mode === 'preset') {
+      if (modeRef.current === 'preset') {
         setStats(data.data);
       }
     };
 
     // Escucha eventos de detección (dispara actualización)
     const handleDetectionEvent = () => {
-      console.log('Evento de detección recibido, actualizando estadísticas...');
-      if (mode === 'preset') {
+      console.log('Evento de detección recibido');
+      // Solo actualiza si estamos en modo preset
+      if (modeRef.current === 'preset') {
         fetchStats();
       }
     };
@@ -131,11 +94,12 @@ export const useRealtimeStats = (timeConfig = { mode: 'preset', value: 5 }, auto
 
     // Cleanup
     return () => {
+      console.log('Limpieza de eventos de WebSocket...');
       websocketService.off('connection_status', handleConnectionStatus);
       websocketService.off('stats_update', handleStatsUpdate);
       websocketService.off('detection_event', handleDetectionEvent);
     };
-  }, [autoRefresh, fetchStats, mode]);
+  }, [autoRefresh]);
 
   // Función para forzar actualización manual
   const refresh = useCallback(() => {
