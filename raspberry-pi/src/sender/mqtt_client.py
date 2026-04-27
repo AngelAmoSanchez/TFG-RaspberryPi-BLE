@@ -30,6 +30,7 @@ class MQTTClient:
         port: int,
         topic: str,
         device_id: str,
+        config=None,
         username: Optional[str] = None,
         password: Optional[str] = None,
         max_buffer_size: int = 100,
@@ -40,6 +41,7 @@ class MQTTClient:
             port: Puerto MQTT
             topic: Topic donde publicar
             device_id: ID de la Raspberry Pi
+            config: Objeto de configuración (opcional)
             username: Usuario MQTT (opcional)
             password: Contraseña MQTT (opcional)
             max_buffer_size: Tamaño máximo del buffer offline
@@ -51,6 +53,7 @@ class MQTTClient:
         self.port = port
         self.topic = topic
         self.device_id = device_id
+        self.config = config
         self.username = username
         self.password = password
         self.max_buffer_size = max_buffer_size
@@ -142,6 +145,13 @@ class MQTTClient:
             "timestamp": datetime.now(SPAIN_TZ).isoformat(),
             "detections": [det.to_dict() for det in detections],
         }
+
+        if self.config:
+            if self.config.device_name:
+                message["name"] = self.config.device_name
+            if self.config.device_location:
+                message["location"] = self.config.device_location
+
 
         # Intento de publicar
         if self._connected and self._client:
