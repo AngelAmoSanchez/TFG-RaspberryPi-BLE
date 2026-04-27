@@ -65,7 +65,7 @@ class Device:
             raise ValueError(
                 f"El hash tiene que tener 64 carácteres (SHA-256), se obtuvieron {len(self.device_hash)}"
             )
-        if self.rssi > 0 or self.rssi < -120:
+        if self.rssi > 0 or self.rssi < -127:
             raise ValueError(f"Invalid RSSI: {self.rssi}")
 
     def to_dict(self) -> dict:
