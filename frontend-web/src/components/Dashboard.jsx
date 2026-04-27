@@ -21,7 +21,8 @@ const Dashboard = () => {
     selectedDeviceId
   );
 
-  const { devices, loading: devicesLoading } = useDevices(true);
+  const { devices, loading: devicesLoading } = useDevices(false);
+  const [showInactive, setShowInactive] = useState(true);  // mostrar todos por defecto en el apartado "Dispositivos IoT"
 
   // Filtrar solo dispositivos activos para el selector
   const activeDevices = devices.filter(d => d.is_active);
@@ -240,10 +241,33 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="lg:col-span-2 bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">
-            Dispositivos IoT ({devices.length})
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">
+              Dispositivos IoT ({showInactive ? devices.length : devices.filter(d => d.is_active).length})
             </h2>
-          <DeviceList devices={devices} loading={devicesLoading} />
+
+            <button
+              onClick={() => setShowInactive(!showInactive)}
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+            >
+              {showInactive ? (
+                <>
+                  <EyeOff className="w-4 h-4" />
+                  Ocultar inactivos
+                </>
+              ) : (
+                <>
+                  <Eye className="w-4 h-4" />
+                  Mostrar todos
+                </>
+              )}
+            </button>
+          </div>
+
+          <DeviceList
+            devices={showInactive ? devices : devices.filter(d => d.is_active)}
+            loading={devicesLoading}
+          />
         </div>
 
         <div className="lg:col-span-1">
