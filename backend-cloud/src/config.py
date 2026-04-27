@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     # Estadisticas
     devices_per_person: float = float(os.getenv("DEVICES_PER_PERSON", "1.5"))
 
+    # Umbrales de zonas RSSI
+    near_threshold: int = int(os.getenv("NEAR_THRESHOLD", "-60"))
+    medium_threshold: int = int(os.getenv("MEDIUM_THRESHOLD", "-75"))
     # Logs
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
 

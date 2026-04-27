@@ -188,6 +188,37 @@ class ApiService {
     const response = await this.client.get('/');
     return response.data;
   }
-}
 
+  // ============= SETTINGS - UMBRALES =============
+
+  /**
+   * Obtiene los umbrales actuales para clasificación de zonas
+   */
+  async getThresholds () {
+    const response = await this.client.get('/api/v1/settings/thresholds');
+    return response.data;
+  }
+
+  /**
+   * Actualiza los umbrales para clasificación de zonas
+   * @param {number} nearThreshold - Umbral para zona NEAR
+   * @param {number} mediumThreshold - Umbral para zona MEDIUM
+   */
+  async updateThresholds (nearThreshold, mediumThreshold) {
+    const response = await this.client.put('/api/v1/settings/thresholds', {
+      near_threshold: nearThreshold,
+      medium_threshold: mediumThreshold
+    });
+    return response.data;
+  }
+
+  /**
+   * Reinicia los umbrales a los valores por defecto
+   */
+  async resetThresholds () {
+    const response = await this.client.post('/api/v1/settings/thresholds/reset');
+    return response.data;
+  }
+
+}
 export default new ApiService();

@@ -1,11 +1,12 @@
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import detections, devices, export, statistics
+from src.api.routes import detections, devices, export
+from src.api.routes import settings as settings_router
+from src.api.routes import statistics
 from src.config import settings
 from src.database.connection import close_db, init_db
 from src.mqtt.subscriber import start_mqtt_subscriber
@@ -68,6 +69,7 @@ app.include_router(detections.router, prefix=f"/api/{settings.api_version}")
 app.include_router(statistics.router, prefix=f"/api/{settings.api_version}")
 app.include_router(devices.router, prefix=f"/api/{settings.api_version}")
 app.include_router(export.router, prefix=f"/api/{settings.api_version}")
+app.include_router(settings_router.router, prefix=f"/api/{settings.api_version}")
 
 
 @app.get("/")

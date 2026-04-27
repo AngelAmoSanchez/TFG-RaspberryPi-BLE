@@ -1,11 +1,12 @@
 import logging
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database.models import Detection, ZoneEnum
+from ..services.settings_service import SettingsService
 from ..utils import timezone_utils
 
 logger = logging.getLogger(__name__)
@@ -33,20 +34,23 @@ class DetectionProcessorService:
         """
         return len(device_hash) == 64 and all(c in "0123456789abcdef" for c in device_hash.lower())
 
-    @staticmethod
-    def classify_zone(
-        rssi: int, near_threshold: int = -60, medium_threshold: int = -75
-    ) -> ZoneEnum:
-        """Clasifica la zona de proximidad según el RSSI
+    async def classify_zone(db: AsyncSession, rssi: int) -> ZoneEnum:
+        """Clasifica zona basado en RSSI usando umbrales dinámicos
 
         Args:
-            rssi: Señal RSSI del dispositivo detectado
-            near_threshold: umbral de RSSI para zona NEAR
-            medium_threshold: umbral de RSSI para zona MEDIUM
+            db: Sesión de base de datos
+            rssi: Valor RSSI en dBm
 
-        Devuelve:
-            Classificación de zona (NEAR, MEDIUM, FAR)
+        Returns:
+            ZoneEnum correspondiente
         """
+
+        settings_service = SettingsService()
+        thresholds = await settings_service.get_thresholds(db)
+
+        near_threshold = thresholds["near_threshold"]
+        medium_threshold = thresholds["medium_threshold"]
+
         if rssi >= near_threshold:
             return ZoneEnum.NEAR
         elif rssi >= medium_threshold:
@@ -74,9 +78,8 @@ class DetectionProcessorService:
         db: AsyncSession,
         device_hash: str,
         rssi: int,
-        zone: str,
         device_id: str,
-        timestamp: datetime = None,
+        timestamp: Optional[datetime] = None,
     ) -> Detection:
         """
         Guarda una detección en la base de datos
@@ -85,7 +88,6 @@ class DetectionProcessorService:
             db: Sesión de base de datos
             device_hash: Hash del dispositivo detectado (SHA-256)
             rssi: Señal RSSI
-            zone: Classificación de zona (NEAR, MEDIUM, FAR)
             device_id: Identificador del agente IoT
             timestamp: Momento de la detección (por defecto: hora actual)
 
@@ -95,15 +97,26 @@ class DetectionProcessorService:
         if not self.verify_hash(device_hash):
             raise ValueError(f"ERROR - Hash inválido: {device_hash}")
 
-        if rssi > 0 or rssi < -120:
+        if rssi > 0 or rssi < -127:
             raise ValueError(f"ERROR - RSSI inválido: {rssi}")
+
+        # Obtener umbrales dinámicos
+        settings_service = SettingsService()
+        thresholds = await settings_service.get_thresholds(db)
+
+        # Clasificar zona dinámicamente
+        if rssi >= thresholds["near_threshold"]:
+            zone = "near"
+        elif rssi >= thresholds["medium_threshold"]:
+            zone = "medium"
+        else:
+            zone = "far"
 
         try:
             zone_enum = ZoneEnum(zone)
         except ValueError:
             raise ValueError(f"ERROR - Zona inválida: {zone}")
 
-        # Crear detección
         detection = Detection(
             device_hash=device_hash,
             rssi=rssi,
@@ -115,7 +128,9 @@ class DetectionProcessorService:
         db.add(detection)
         await db.flush()
 
-        logger.debug(f"Detección guardada: {device_hash[:16]}... | {rssi} dBm | {zone}")
+        logger.debug(
+            f"Detección guardada: {device_hash[:16]}... | {rssi} dBm | {zone} (umbrales: near≥{thresholds['near_threshold']}, medium≥{thresholds['medium_threshold']})"
+        )
 
         return detection
 
@@ -132,6 +147,13 @@ class DetectionProcessorService:
         Devuelve:
             Lista de objetos Detection creados
         """
+
+        settings_service = SettingsService()
+        thresholds = await settings_service.get_thresholds(db)
+
+        near_threshold = thresholds["near_threshold"]
+        medium_threshold = thresholds["medium_threshold"]
+
         detections = []
 
         for data in detections_data:
@@ -143,11 +165,20 @@ class DetectionProcessorService:
                 else:
                     timestamp = timezone_utils.now()
 
+                # Clasificar zona dinámicamente
+                rssi = data["rssi"]
+                if rssi >= near_threshold:
+                    zone = "near"
+                elif rssi >= medium_threshold:
+                    zone = "medium"
+                else:
+                    zone = "far"
+
                 # Crear detección
                 detection = Detection(
                     device_hash=data["device_hash"],
-                    rssi=data["rssi"],
-                    zone=data["zone"].lower(),
+                    rssi=rssi,
+                    zone=zone,
                     device_id=device_id,
                     timestamp=timestamp,
                 )
@@ -161,7 +192,7 @@ class DetectionProcessorService:
         # Insertar detecciones válidas en bloque
         if detections:
             db.add_all(detections)
-            await db.flush()
+            await db.commit()
             logger.info(f"Bloque de {len(detections)} detecciones guardadas desde {device_id}")
 
         return detections
@@ -190,7 +221,11 @@ class DetectionProcessorService:
         return list(detections)
 
     async def get_unique_devices_count(
-        self, db: AsyncSession, start_time: datetime, end_time: datetime, zone: ZoneEnum = None
+        self,
+        db: AsyncSession,
+        start_time: datetime,
+        end_time: datetime,
+        zone: ZoneEnum = None,
     ) -> int:
         """Cuenta el número de dispositivos únicos detectados en un rango de tiempo
 

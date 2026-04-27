@@ -124,3 +124,22 @@ class AggregatedStats(Base):
             "estimated_people": self.estimated_people,
             "avg_rssi": self.avg_rssi,
         }
+
+
+class SystemSettings(Base):
+    """Configuración del sistema (umbrales, parámetros)"""
+
+    __tablename__ = "system_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String(100), unique=True, nullable=False, index=True)
+    value = Column(String(255), nullable=False)
+    description = Column(String(500))
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        default=_get_spain_now,
+        onupdate=_get_spain_now,
+    )
+
+    def __repr__(self):
+        return f"<SystemSettings(key={self.key}, value={self.value})>"

@@ -6,6 +6,7 @@ import ZoneChart from './ZoneChart';
 import DeviceList from './DeviceList';
 import ConnectionStatus from './ConnectionStatus';
 import ExportFilters from './ExportFilters';
+import ThresholdSettings from './ThresholdSettings'; 
 import TimeRangeSelector from './TimeRangeSelector';
 import { Activity, Users, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 
@@ -171,13 +172,8 @@ const Dashboard = () => {
           subtitle="Basado en ratio 1.5 dispositivos/persona"
         />
         
-        <StatsCard
-          title="Agentes Activos"
-          value={devices.length}
-          icon={<Activity className="w-6 h-6" />}
-          color="purple"
-          subtitle={devicesLoading ? 'Cargando...' : 'Raspberry Pi conectados'}
-        />
+        <ThresholdSettings />
+
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -220,7 +216,7 @@ const Dashboard = () => {
         <div className="lg:col-span-2 bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-4">
             Dispositivos IoT ({devices.length})
-          </h2>
+            </h2>
           <DeviceList devices={devices} loading={devicesLoading} />
         </div>
 
