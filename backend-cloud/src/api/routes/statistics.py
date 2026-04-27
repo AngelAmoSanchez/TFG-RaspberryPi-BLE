@@ -1,9 +1,8 @@
 from datetime import datetime, timedelta
-from http.client import HTTPException
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...database.connection import get_db
