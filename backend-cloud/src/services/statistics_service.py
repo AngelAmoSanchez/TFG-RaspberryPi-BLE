@@ -139,7 +139,7 @@ class StatisticsService:
         return stats
 
     async def get_range_stats(
-        self, db: AsyncSession, start_time: datetime, end_time: datetime
+        self, db: AsyncSession, start_time: datetime, end_time: datetime, device_id: str = None
     ) -> Dict:
         """Obtiene estadísticas para un rango de fechas específico
 
@@ -147,6 +147,7 @@ class StatisticsService:
             db: Sesión de base de datos
             start_time: Fecha y hora de inicio
             end_time: Fecha y hora de fin
+            device_id: Opcional, filtrar por ID de dispositivo
 
         Devuelve:
             Diccionario con estadísticas por zona y totales
@@ -154,6 +155,13 @@ class StatisticsService:
         # Asegurar que las fechas tienen timezone de España
         start_time = timezone_utils.ensure_spain_tz(start_time)
         end_time = timezone_utils.ensure_spain_tz(end_time)
+
+        # Construir condiciones
+        conditions = [Detection.timestamp >= start_time, Detection.timestamp <= end_time]
+
+        # Filtrar por device_id si se proporciona
+        if device_id:
+            conditions.append(Detection.device_id == device_id)
 
         # Consulta para obtener estadísticas por zona
         query = (
@@ -163,7 +171,7 @@ class StatisticsService:
                 func.count(Detection.id).label("total_detections"),
                 func.avg(Detection.rssi).label("avg_rssi"),
             )
-            .where(and_(Detection.timestamp >= start_time, Detection.timestamp <= end_time))
+            .where(and_(*conditions))
             .group_by(Detection.zone)
         )
 
@@ -208,12 +216,15 @@ class StatisticsService:
         )
         return stats
 
-    async def get_real_time_stats(self, db: AsyncSession, minutes: int = 5) -> Dict:
+    async def get_real_time_stats(
+        self, db: AsyncSession, minutes: int = 5, device_id: str = None
+    ) -> Dict:
         """Obtiene estadísticas en tiempo real para los últimos N minutos
 
         Args:
             db: Sesión de base de datos
             minutes: úmero de minutos para retroceder
+            device_id: Opcional, filtrar por ID de dispositivo
 
         Devuelve:
             Diccionario con estadísticas por zona y totales
@@ -221,6 +232,13 @@ class StatisticsService:
         now = timezone_utils.now()
         start_time = now - timedelta(minutes=minutes)
         end_time = now + timedelta(seconds=1)
+
+        # Construir condiciones
+        conditions = [Detection.timestamp >= start_time, Detection.timestamp < end_time]
+
+        # Filtrar por device_id si se proporciona
+        if device_id:
+            conditions.append(Detection.device_id == device_id)
 
         # Consulta para agrupar por zona
         query = (
@@ -230,7 +248,7 @@ class StatisticsService:
                 func.count(Detection.id).label("total_detections"),
                 func.avg(Detection.rssi).label("avg_rssi"),
             )
-            .where(and_(Detection.timestamp >= start_time, Detection.timestamp < end_time))
+            .where(and_(*conditions))
             .group_by(Detection.zone)
         )
 

@@ -6,30 +6,36 @@ import ZoneChart from './ZoneChart';
 import DeviceList from './DeviceList';
 import ConnectionStatus from './ConnectionStatus';
 import ExportFilters from './ExportFilters';
-import ThresholdSettings from './ThresholdSettings'; 
+import ThresholdSettings from './ThresholdSettings';
 import TimeRangeSelector from './TimeRangeSelector';
-import { Activity, Users, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Activity, Users, Wifi, WifiOff, RefreshCw, Settings, Eye, EyeOff } from 'lucide-react';
 
 const Dashboard = () => {
   const [timeConfig, setTimeConfig] = useState({ mode: 'preset', value: 5 });
-  
+  const [selectedDeviceId, setSelectedDeviceId] = useState('');
+
   // Auto-refresh siempre activo en modo preset
   const { stats, loading, error, wsConnected, refresh } = useRealtimeStats(
-    timeConfig, 
-    timeConfig.mode === 'preset' // Auto-refresh solo en modo preset
+    timeConfig,
+    timeConfig.mode === 'preset', // Auto-refresh solo en modo preset
+    selectedDeviceId
   );
-  
+
   const { devices, loading: devicesLoading } = useDevices(true);
+
+  // Filtrar solo dispositivos activos para el selector
+  const activeDevices = devices.filter(d => d.is_active);
+  const showDeviceSelector = activeDevices.length > 1; // Mostrar solo si hay más de uno
 
   // Auto-refresh cada 30 segundos en modo preset
   useEffect(() => {
     if (timeConfig.mode === 'custom') return;
-    
+
     const interval = setInterval(() => {
       console.log('Recargando automáticamente las estadísticas...');
       refresh();
     }, 30000);
-    
+
     return () => clearInterval(interval);
   }, [timeConfig.mode, refresh]);
 
@@ -44,7 +50,7 @@ const Dashboard = () => {
       // Formatear fechas personalizadas
       const formatDate = (dateStr) => {
         const date = new Date(dateStr);
-        return date.toLocaleString('es-ES', { 
+        return date.toLocaleString('es-ES', {
           day: '2-digit',
           month: '2-digit',
           hour: '2-digit',
@@ -53,7 +59,7 @@ const Dashboard = () => {
       };
       return `${formatDate(timeConfig.startDateTime)} - ${formatDate(timeConfig.endDateTime)}`;
     }
-    
+
     // Para modo preset
     const minutes = timeConfig.value || 5;
     if (minutes === 1) return 'Último minuto';
@@ -63,7 +69,7 @@ const Dashboard = () => {
     if (minutes === 720) return 'Últimas 12 horas';
     if (minutes === 1440) return 'Último día';
     if (minutes === 10080) return 'Últimos 7 días';
-    
+
     // Fallback para otros valores
     if (minutes < 60) {
       return `Últimos ${minutes} minutos`;
@@ -135,11 +141,31 @@ const Dashboard = () => {
               Monitoreo en tiempo real • {getTimeFilterLabel()}
             </p>
           </div>
-          
+
           <div className="flex items-center gap-4">
             <ConnectionStatus connected={wsConnected} />
-            
-            <TimeRangeSelector 
+
+            {showDeviceSelector && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Dispositivo:
+                </label>
+                <select
+                  value={selectedDeviceId}
+                  onChange={(e) => setSelectedDeviceId(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
+                >
+                  <option value="">Todos los dispositivos</option>
+                  {activeDevices.map((device) => (
+                    <option key={device.device_id} value={device.device_id}>
+                      {device.name || device.device_id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <TimeRangeSelector
               onTimeRangeChange={handleTimeRangeChange}
               currentValue={timeConfig.value}
             />
@@ -163,7 +189,7 @@ const Dashboard = () => {
           color="blue"
           subtitle={`${totalStats.total_detections || 0} detecciones totales`}
         />
-        
+
         <StatsCard
           title="Personas Estimadas"
           value={totalStats.estimated_people || 0}
@@ -171,7 +197,7 @@ const Dashboard = () => {
           color="green"
           subtitle="Basado en ratio 1.5 dispositivos/persona"
         />
-        
+
         <ThresholdSettings />
 
       </div>

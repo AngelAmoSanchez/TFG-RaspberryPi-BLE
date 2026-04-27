@@ -65,12 +65,16 @@ class ApiService {
   /**
    * Obtiene estadísticas en tiempo real (últimos N minutos)
    * @param {number} minutes - Minutos para retroceder
+   * @param {string} deviceId - Filtrar por dispositivo (opcional)
    * @returns {object} - Estadísticas agrupadas por zona
    */
-  async getRealtimeStats(minutes = 5) {
-    const response = await this.client.get('/api/v1/statistics/realtime', {
-      params: { minutes }
-    });
+  async getRealtimeStats(minutes = 5, deviceId = '') {
+    const params = { minutes };
+    if (deviceId) {
+      params.device_id = deviceId;
+    }
+    
+    const response = await this.client.get('/api/v1/statistics/realtime', { params });
     return response.data;
   }
 
@@ -101,15 +105,17 @@ class ApiService {
    * Obtiene estadísticas para un rango específico de fecha y hora
    * @param {string} startDateTime - Fecha y hora de inicio en formato ISO (YYYY-MM-DDTHH:mm:ss)
    * @param {string} endDateTime - Fecha y hora de fin en formato ISO (YYYY-MM-DDTHH:mm:ss)
+   * @param {string} deviceId - Filtrar por dispositivo (opcional)
    * @returns {object} - Estadísticas agrupadas por zona para el rango específico
    */
-  async getRangeStats(startDateTime, endDateTime) {
-    const response = await this.client.get('/api/v1/statistics/range', {
-      params: { 
-        start_time: startDateTime,
-        end_time: endDateTime
-      }
-    });
+  async getRangeStats(startDateTime, endDateTime, deviceId = '') {
+    const params = { start_time: startDateTime, end_time: endDateTime };
+    
+    if (deviceId) {
+      params.device_id = deviceId;
+    }
+    
+    const response = await this.client.get('/api/v1/statistics/range', { params });
     return response.data;
   }
 

@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta
+from http.client import HTTPException
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query
@@ -15,11 +17,12 @@ router = APIRouter(prefix="/statistics", tags=["statistics"])
 @router.get("/realtime")
 async def get_realtime_stats(
     minutes: int = Query(5, ge=1, le=10080),
+    device_id: Optional[str] = Query(None, description="Filtrar por dispositivo"),
     db: AsyncSession = Depends(get_db),  # Hasta 7 días (máximo del seleccionador predeterminado)
 ):
     """Devuelve estadísticas en tiempo real para los últimos N minutos"""
     service = StatisticsService()
-    stats = await service.get_real_time_stats(db, minutes)
+    stats = await service.get_real_time_stats(db, minutes, device_id)
     return stats
 
 
@@ -31,6 +34,7 @@ async def get_range_stats(
     end_time: str = Query(
         ..., description="Fecha y hora de fin en formato ISO (ej: 2026-04-23T12:00:00)"
     ),
+    device_id: Optional[str] = Query(None, description="Filtrar por dispositivo"),
     db: AsyncSession = Depends(get_db),
 ):
     """Devuelve estadísticas para un rango específico de fechas y horas"""
@@ -52,7 +56,7 @@ async def get_range_stats(
         )
 
     service = StatisticsService()
-    stats = await service.get_range_stats(db, start_dt, end_dt)
+    stats = await service.get_range_stats(db, start_dt, end_dt, device_id)
     return stats
 
 

@@ -24,6 +24,8 @@ class DetectionCreate(BaseModel):
 class BulkDetectionsCreate(BaseModel):
     device_id: str
     detections: List[dict]
+    name: Optional[str] = None
+    location: Optional[str] = None
 
 
 @router.post("/")
@@ -51,6 +53,9 @@ async def create_bulk_detections(data: BulkDetectionsCreate, db: AsyncSession = 
     """Crea múltiples detecciones a la vez"""
     service = DetectionProcessorService()
     device_service = DeviceService()
+
+    # Registrar/actualizar dispositivo con name y location
+    await device_service.register_device(db, data.device_id, name=data.name, location=data.location)
 
     results = await service.save_bulk_detections(db, data.detections, data.device_id)
 
