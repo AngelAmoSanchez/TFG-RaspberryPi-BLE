@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, Download, Clock, Filter } from 'lucide-react';
 import api from '../services/api';
+import { useDevices } from '../hooks/useDevices';
 
 const ExportFilters = () => {
   const [filterMode, setFilterMode] = useState('preset'); // 'preset', 'custom', 'range'
@@ -16,6 +17,8 @@ const ExportFilters = () => {
   
   const [selectedZone, setSelectedZone] = useState('');
   const [selectedDevice, setSelectedDevice] = useState('');
+
+  const { devices, loading: devicesLoading } = useDevices(false);  // false = todos
 
   const presetOptions = [
     { value: 30, unit: 'minutes', label: 'Últimos 30 minutos', key: '30-minutes' },
@@ -272,13 +275,23 @@ const ExportFilters = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Dispositivo IoT
           </label>
-          <input
-            type="text"
+          <select
             value={selectedDevice}
             onChange={(e) => setSelectedDevice(e.target.value)}
-            placeholder="ej: rpi-001"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+            disabled={devicesLoading}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+          >
+            <option value="">Todos los dispositivos</option>
+            {devices.map((device) => (
+              <option key={device.device_id} value={device.device_id}>
+                {device.name || device.device_id}
+                {!device.is_active && ' (Inactivo)'}
+              </option>
+            ))}
+          </select>
+          {devicesLoading && (
+            <p className="text-xs text-gray-500 mt-1">Cargando dispositivos...</p>
+          )}
         </div>
       </div>
 
