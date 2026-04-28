@@ -15,15 +15,11 @@ logger = logging.getLogger(__name__)
 
 
 class HTTPClient:
-    """
-    Cliente HTTP REST para publicar detecciones al backend
-    Alternativa síncrona a MQTT, útil para:
-    - Backends sin MQTT
-    - Debugging simple
-    - Redes donde MQTT está bloqueado
-    """
+    """Cliente HTTP REST para publicar detecciones al backend"""
 
-    def __init__(self, base_url: str, device_id: str, config=None, api_key: str = None, timeout: int = 10):
+    def __init__(
+        self, base_url: str, device_id: str, config=None, api_key: str = None, timeout: int = 10
+    ):
         """
         Args:
             base_url: URL base del API (ej: "https://api.example.com")
@@ -33,7 +29,7 @@ class HTTPClient:
             timeout: Timeout de requests en segundos
         """
         if not REQUESTS_AVAILABLE:
-            raise ImportError("Requests not installed. Install with: pip install requests")
+            raise ImportError("La librería Requests no está instalada.")
 
         self.base_url = base_url.rstrip("/")
         self.device_id = device_id
@@ -44,48 +40,45 @@ class HTTPClient:
         self.detections_endpoint = f"{self.base_url}/api/v1/detections/bulk"
 
         logger.info(
-            f"HTTP Client initialized (endpoint: {self.detections_endpoint}, "
-            f"device: {device_id})"
+            f"Cliente HTTP inicializado (endpoint: {self.detections_endpoint}, "
+            f"dispositivo: {device_id})"
         )
 
     def connect(self) -> bool:
-        """
-        Verifica conectividad con el backend
+        """Verifica conectividad con el backend
 
         Devuelve:
             True si el backend está alcanzable
         """
         try:
-            logger.info("Testing HTTP connectivity...")
+            logger.info("Probando conectividad HTTP...")
 
-            # Hacer ping al endpoint de health
             health_url = f"{self.base_url}/health"
             response = requests.get(health_url, timeout=self.timeout)
 
             if response.status_code == 200:
-                logger.info("✓ HTTP backend is reachable")
+                logger.info("OK - HTTP backend alcanzable")
                 return True
             else:
-                logger.warning(f"Backend responded with status {response.status_code}")
+                logger.warning(f"Backend respondió con estado {response.status_code}")
                 return False
 
         except requests.exceptions.ConnectionError:
-            logger.error("✗ Cannot reach backend (connection error)")
+            logger.error("ERROR - No se puede alcanzar el backend (error de conexión)")
             return False
         except requests.exceptions.Timeout:
-            logger.error("✗ Backend timeout")
+            logger.error("ERROR - Backend timeout")
             return False
         except Exception as e:
-            logger.error(f"✗ HTTP connectivity error: {e}")
+            logger.error(f"ERROR - Error de conectividad HTTP: {e}")
             return False
 
     def disconnect(self):
         """HTTP no requiere desconexión explícita"""
-        logger.info("HTTP client closed")
+        logger.info("Cliente HTTP desconectado")
 
     def publish_detections(self, detections: List[Device]) -> bool:
-        """
-        Publica lista de detecciones via HTTP POST
+        """Publica lista de detecciones por HTTP POST
 
         Args:
             detections: Lista de detecciones procesadas
@@ -94,7 +87,7 @@ class HTTPClient:
             True si se publicó exitosamente
         """
         if not detections:
-            logger.debug("No detections to publish")
+            logger.debug("Ninguna detección para publicar")
             return True
 
         try:
@@ -124,7 +117,7 @@ class HTTPClient:
                 headers["X-API-Key"] = self.api_key
 
             # Enviar POST
-            logger.info(f"Sending {len(detections)} detections via HTTP...")
+            logger.info(f"Enviando {len(detections)} detecciones por HTTP...")
             response = requests.post(
                 self.detections_endpoint,
                 json=payload,
@@ -132,33 +125,31 @@ class HTTPClient:
                 timeout=self.timeout,
             )
 
-            # Verificar respuesta
             if response.status_code in [200, 201]:
                 logger.info(
-                    f"✓ Published {len(detections)} detections via HTTP "
-                    f"(status: {response.status_code})"
+                    f"OK - Publicadas {len(detections)} detecciones por HTTP "
+                    f"(estado: {response.status_code})"
                 )
                 return True
             else:
                 logger.error(
-                    f"✗ HTTP publish failed (status: {response.status_code}, "
+                    f"ERROR - Publicación HTTP fallida (estado: {response.status_code}, "
                     f"body: {response.text[:200]})"
                 )
                 return False
 
         except requests.exceptions.Timeout:
-            logger.error("✗ HTTP request timeout")
+            logger.error("ERROR - Timeout en solicitud HTTP")
             return False
         except requests.exceptions.ConnectionError:
-            logger.error("✗ HTTP connection error")
+            logger.error("ERROR - Error de conexión HTTP")
             return False
         except Exception as e:
-            logger.error(f"✗ HTTP publish error: {e}")
+            logger.error(f"ERROR - Error de publicación HTTP: {e}")
             return False
 
     def is_connected(self) -> bool:
-        """
-        Verifica si el backend está alcanzable
+        """Verifica si el backend está alcanzable
 
         Devuelve:
             True si está conectado

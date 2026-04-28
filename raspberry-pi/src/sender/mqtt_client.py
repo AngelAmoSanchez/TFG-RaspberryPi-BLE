@@ -152,7 +152,6 @@ class MQTTClient:
             if self.config.device_location:
                 message["location"] = self.config.device_location
 
-
         # Intento de publicar
         if self._connected and self._client:
             return self._publish_message(message)

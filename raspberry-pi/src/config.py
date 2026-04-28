@@ -79,7 +79,7 @@ class AgentConfig:
     mqtt: MQTTConfig = None
     http: HTTPConfig = None
     scanner: ScannerConfig = None
-    
+
     @staticmethod
     def from_env() -> "AgentConfig":
         """Carga configuración completa desde variables de entorno"""
@@ -89,7 +89,9 @@ class AgentConfig:
 
         mode = os.getenv("COMMUNICATION_MODE", "mqtt").lower()
         if mode not in ["mqtt", "http"]:
-            raise ValueError(f"Variable de entorno COMMUNICATION_MODE inválida: {mode}. Debe ser 'mqtt' o 'http'")
+            raise ValueError(
+                f"Variable de entorno COMMUNICATION_MODE inválida: {mode}. Debe ser 'mqtt' o 'http'"
+            )
 
         return AgentConfig(
             device_id=device_id,
@@ -101,7 +103,6 @@ class AgentConfig:
             http=HTTPConfig.from_env() if mode == "http" else None,
             scanner=ScannerConfig.from_env(),
         )
-
 
     def validate(self):
         """
@@ -117,12 +118,14 @@ class AgentConfig:
         # Validar log level
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if self.log_level not in valid_levels:
-            raise ValueError(f"Variable de entorno LOG_LEVEL inválida. Debe ser una de {valid_levels}")
+            raise ValueError(
+                f"Variable de entorno LOG_LEVEL inválida. Debe ser una de {valid_levels}"
+            )
 
         # Validar configuración según modo
         if self.communication_mode == "mqtt":
             if not self.mqtt:
-                raise ValueError("MQTT config required when mode is 'mqtt'")
+                raise ValueError("Configuración de MQTT es necesaria cuando el modo es 'mqtt'")
             if not self.mqtt.broker:
                 raise ValueError("Variable de entorno MQTT_BROKER es necesaria")
             if not self.mqtt.topic:
@@ -130,25 +133,33 @@ class AgentConfig:
 
         elif self.communication_mode == "http":
             if not self.http:
-                raise ValueError("HTTP config required when mode is 'http'")
+                raise ValueError("Configuración de HTTP es necesaria cuando el modo es 'http'")
             if not self.http.base_url:
                 raise ValueError("Variable de entorno HTTP_BASE_URL es necesaria")
 
         # Validar scanner
         if not self.scanner:
-            raise ValueError("Scanner config is required")
+            raise ValueError("Configuración del scanner es necesaria")
 
         if self.scanner.scan_duration < 1 or self.scanner.scan_duration > 60:
-            raise ValueError("Variable de entorno SCAN_DURATION inválida. Debe ser entre 1 y 60 segundos")
+            raise ValueError(
+                "Variable de entorno SCAN_DURATION inválida. Debe ser entre 1 y 60 segundos"
+            )
 
         if self.scanner.scan_interval < 5:
-            raise ValueError("Variable de entorno SCAN_INTERVAL inválida. Debe ser al menos 5 segundos")
+            raise ValueError(
+                "Variable de entorno SCAN_INTERVAL inválida. Debe ser al menos 5 segundos"
+            )
 
         if self.scanner.near_threshold >= 0:
-            raise ValueError("Variable de entorno NEAR_THRESHOLD inválida. Debe ser un valor negativo (RSSI en dBm)")
+            raise ValueError(
+                "Variable de entorno NEAR_THRESHOLD inválida. Debe ser un valor negativo (RSSI en dBm)"
+            )
 
         if self.scanner.medium_threshold >= self.scanner.near_threshold:
-            raise ValueError("Variable de entorno MEDIUM_THRESHOLD inválida. Debe ser menor que NEAR_THRESHOLD")
+            raise ValueError(
+                "Variable de entorno MEDIUM_THRESHOLD inválida. Debe ser menor que NEAR_THRESHOLD"
+            )
 
     def __str__(self) -> str:
         """Representación legible de la configuración"""
