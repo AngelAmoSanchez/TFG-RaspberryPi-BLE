@@ -1,0 +1,54 @@
+# ==========================
+# Environment & dependencies
+# ==========================
+venv/
+node_modules/
+build/
+
+# ==========================
+# IDE & editor files
+# ==========================
+.idea/
+.vscode/
+dist/
+.DS_Store
+.local
+
+# ==========================
+# Logs & coverage
+# ==========================
+logs/*.log
+*.log
+app.log
+deployments.log
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml
+
+# ==========================
+# Config & environment
+# ==========================
+.env
+.version
+nginx.prod.ssl.conf
+entrypoint.sh
+
+# ==========================
+# Temporary & test files
+# ==========================
+uploads/
+test_file.txt
+
+# ==========================
+# Custom ignores
+# ==========================
+.moduleignore
+
+# ==========================
+# Cloud deployment
+# ==========================
+.vercel/
+.supabase/
+
