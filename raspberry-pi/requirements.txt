@@ -11,6 +11,10 @@ bleak>=0.20.0
 
 # Utilidades
 python-dateutil>=2.8.0
+asyncio>=3.4.3
+python-dotenv>=1.0.0
+dataclasses-json>=0.6.3
+
 
 # Testing
 pytest>=8.0.0
@@ -24,3 +28,7 @@ black>=24.2.0
 isort>=5.6.4
 flake8>=7.0.0
 mypy>=1.9.0
+
+# Communicaciones
+paho-mqtt>=1.6.1
+requests>=2.31.0
