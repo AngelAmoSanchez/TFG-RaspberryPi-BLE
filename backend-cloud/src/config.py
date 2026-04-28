@@ -54,9 +54,6 @@ class Settings(BaseSettings):
     # Logs
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
 
-    # Railway
-    railway_environment: Optional[str] = os.getenv("RAILWAY_ENVIRONMENT")
-
     class Config:
         env_file = ".env"
         case_sensitive = False
@@ -67,7 +64,7 @@ class Settings(BaseSettings):
 
     def is_production(self) -> bool:
         """Devuelve True si se está ejecutando en producción"""
-        return self.environment == "production" or self.railway_environment == "production"
+        return self.environment == "production"
 
 
 # Instancia global de configuración

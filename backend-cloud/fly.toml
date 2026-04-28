@@ -1,0 +1,34 @@
+# fly.toml app configuration file generated for tfg-raspberrypi-ble on 2026-04-29T00:36:51+02:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'tfg-raspberrypi-ble'
+primary_region = 'cdg'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  API_VERSION = 'v1'
+  DEBUG = 'false'
+  DEVICES_PER_PERSON = '1.5'
+  ENVIRONMENT = 'production'
+  LOG_LEVEL = 'INFO'
+  MEDIUM_THRESHOLD = '-75'
+  MQTT_ENABLED = 'false'
+  NEAR_THRESHOLD = '-60'
+  PORT = '8000'
+  WEBSOCKET_ENABLED = 'true'
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  memory = '512mb'
+  cpus = 1
+  memory_mb = 512
