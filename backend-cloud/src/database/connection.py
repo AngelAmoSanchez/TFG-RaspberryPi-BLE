@@ -25,14 +25,26 @@ class Database:
             return
 
         try:
+            # Configuración del engine
+            engine_kwargs = {
+                "echo": settings.debug,
+                "pool_size": 10,
+                "max_overflow": 20,
+                "pool_pre_ping": True,
+                "pool_recycle": 3600,
+            }
+
+            # Supabase pgbouncer para evitar problemas con la cache
+            if "pooler.supabase.com" in settings.database_url:
+                engine_kwargs["connect_args"] = {
+                    "server_settings": {"jit": "off"},
+                    "statement_cache_size": 0,
+                }
+
             # Crear motor de base de datos asíncrono
             self.engine = create_async_engine(
                 settings.database_url,
-                echo=settings.debug,
-                pool_size=10,
-                max_overflow=20,
-                pool_pre_ping=True,
-                pool_recycle=3600,
+                **engine_kwargs
             )
 
             # Crear generador de sesiones
