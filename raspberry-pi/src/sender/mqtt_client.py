@@ -79,7 +79,7 @@ class MQTTClient:
         try:
             # Crear cliente MQTT
             self._client = mqtt.Client(
-                client_id=f"rpi-agent-{self.device_id}",
+                client_id="backend-subscriber",
                 protocol=mqtt.MQTTv311,
                 clean_session=True,
             )
