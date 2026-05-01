@@ -85,7 +85,7 @@ class WebSocketService {
       if (this.socket?.readyState === WebSocket.OPEN) {
         this.socket.send('ping');
       }
-    }, 30000);
+    }, 15000);
   }
 
   stopPing() {
