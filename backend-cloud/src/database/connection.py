@@ -35,10 +35,14 @@ class Database:
             }
 
             # Supabase pgbouncer para evitar problemas con la cache
-            if "pooler.supabase.com" in settings.database_url:
+            if "pooler.supabase.com" in settings.database_url or ":6543" in settings.database_url:
                 engine_kwargs["connect_args"] = {
-                    "server_settings": {"jit": "off"},
+                    "prepared_statement_cache_size": 0,
                     "statement_cache_size": 0,
+                    "server_settings": {
+                        "jit": "off",
+                        "wait_timeout": "30"
+                    }
                 }
 
             # Crear motor de base de datos asíncrono
