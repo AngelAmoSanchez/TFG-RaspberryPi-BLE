@@ -15,6 +15,7 @@ from ..config import settings
 from ..database.connection import database
 from ..services.detection_processor import DetectionProcessorService
 from ..services.device_service import DeviceService
+from ..websocket.manager import ws_manager
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +121,7 @@ class MQTTSubscriber:
                 # Guarda las detecciones
                 if detections:
                     await self.detection_service.save_bulk_detections(db, detections, device_id)
+                    await ws_manager.broadcast_detection_event(device_id, len(detections))
                     logger.info(f"OK - Guardadas {len(detections)} detecciones")
 
                 await db.commit()
