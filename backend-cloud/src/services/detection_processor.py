@@ -168,11 +168,13 @@ class DetectionProcessorService:
                 # Clasificar zona dinámicamente
                 rssi = data["rssi"]
                 if rssi >= near_threshold:
-                    zone = "near"
+                    zone_str = "near"
                 elif rssi >= medium_threshold:
-                    zone = "medium"
+                    zone_str = "medium"
                 else:
-                    zone = "far"
+                    zone_str = "far"
+
+                zone = ZoneEnum(zone_str)
 
                 # Crear detección
                 detection = Detection(
