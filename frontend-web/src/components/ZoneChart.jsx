@@ -1,12 +1,16 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
-const ZoneChart = ({ data }) => {
-  const chartData = Object.entries(data || {}).map(([zone, stats]) => ({
-    name: zone.charAt(0).toUpperCase() + zone.slice(1),
-    value: stats.estimated_people,
-    devices: stats.unique_devices
-  }));
+const ZoneChart = ({ data }) => { 
+const chartData = Object.entries(data || {}).map(([zone, stats]) => {
+    const normalized = zone.toLowerCase();
+    const displayName = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+    return {
+      name: displayName,
+      value: stats.estimated_people,
+      devices: stats.unique_devices
+    };
+  });
 
   const COLORS = {
     'Near': '#FF474C',
