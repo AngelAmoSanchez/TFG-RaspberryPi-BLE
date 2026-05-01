@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import ssl
 from typing import Optional
 
 try:
@@ -131,6 +132,14 @@ class MQTTSubscriber:
 
             if self.username and self.password:
                 self.client.username_pw_set(self.username, self.password)
+
+            # Configurar TLS para el puerto 8883 y broker EMQX Cloud (certificado de Let's Encrypt)
+            self.client.tls_set(
+                ca_certs=None,
+                certfile=None,
+                cert_reqs=ssl.CERT_REQUIRED,
+                tls_version=ssl.PROTOCOL_TLS
+            )
 
             # Callbacks
             self.client.on_connect = self.on_connect
