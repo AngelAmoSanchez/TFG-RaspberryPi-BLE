@@ -2,7 +2,7 @@ import enum
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Column, DateTime
+from sqlalchemy import Column, DateTime, CheckConstraint
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import Float, Index, Integer, String
 from sqlalchemy.dialects.postgresql import TIMESTAMP
@@ -34,7 +34,7 @@ class Detection(Base):
     device_hash = Column(String(64), nullable=False, index=True)
     rssi = Column(Integer, nullable=False)
     zone = Column(
-        SQLEnum(ZoneEnum, native_enum=False, create_constraint=False), nullable=False, index=True
+        String(10), nullable=False, index=True
     )
     timestamp = Column(
         TIMESTAMP(timezone=True),
@@ -49,6 +49,10 @@ class Detection(Base):
         Index("idx_device_hash_timestamp", "device_hash", "timestamp"),
         Index("idx_zone_timestamp", "zone", "timestamp"),
         Index("idx_device_id_timestamp", "device_id", "timestamp"),
+        CheckConstraint(
+            zone.in_(['NEAR', 'MEDIUM', 'FAR']),
+            name="ck_detections_zone_valid"
+        ),
     )
 
     def to_dict(self) -> dict:

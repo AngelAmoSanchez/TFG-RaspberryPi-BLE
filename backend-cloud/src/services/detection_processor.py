@@ -174,13 +174,14 @@ class DetectionProcessorService:
                 else:
                     zone_str = "far"
 
-                zone = ZoneEnum(zone_str)
+                zone_enum = ZoneEnum(zone_str)
+                zone_value = zone_enum.name
 
                 # Crear detección
                 detection = Detection(
                     device_hash=data["device_hash"],
                     rssi=rssi,
-                    zone=zone,
+                    zone=zone_value,
                     device_id=device_id,
                     timestamp=timestamp,
                 )

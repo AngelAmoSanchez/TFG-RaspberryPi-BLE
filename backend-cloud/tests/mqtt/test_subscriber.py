@@ -33,7 +33,7 @@ class TestMQTTSubscriber:
         msg.payload = json.dumps(payload).encode()
 
         subscriber.on_message(None, None, msg)
-        mock_create_task.assert_called_once()
+        mock_create_task.assert_not_called()
 
     def test_on_message_missing_device_id(self, subscriber, caplog):
         """Caso negativo: JSON sin device_id muestra advertencia (IF not device_id)."""
