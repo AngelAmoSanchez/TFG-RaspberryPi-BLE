@@ -50,6 +50,7 @@ class MQTTSubscriber:
         self.client = None
         self.connected = False
         self.running = False
+        self.loop = None  # Se asignará al iniciar run()
 
         # Servicios
         self.detection_service = DetectionProcessorService()
@@ -63,7 +64,6 @@ class MQTTSubscriber:
             self.connected = True
             logger.info("OK - Conectado al broker MQTT")
 
-            # Subscribe to topic
             client.subscribe(self.topic, qos=1)
             logger.info(f"OK - Subscripto al topic: {self.topic}")
         else:
@@ -81,7 +81,6 @@ class MQTTSubscriber:
     def on_message(self, client, userdata, msg):
         """Callback cuando se recibe un mensaje"""
         try:
-            # Parsea JSON del mensaje
             payload = json.loads(msg.payload.decode())
 
             device_id = payload.get("device_id")
@@ -93,7 +92,13 @@ class MQTTSubscriber:
 
             logger.info(f"Recibidas {len(detections)} detecciones desde {device_id}")
 
-            asyncio.create_task(self.process_message(device_id, detections))
+            # Programar el procesamiento en el bucle asyncio principal
+            if self.loop:
+                asyncio.run_coroutine_threadsafe(
+                    self.process_message(device_id, detections), self.loop
+                )
+            else:
+                logger.error("ERROR - No hay bucle asyncio disponible para procesar el mensaje")
 
         except json.JSONDecodeError as e:
             logger.error(f"ERROR - JSON inválido en el mensaje: {e}")
@@ -168,6 +173,8 @@ class MQTTSubscriber:
     async def run(self):
         """Ejecuta el subscriber (mantiene la conexión activa)"""
         self.running = True
+        # Guarda referencia al bucle asyncio en ejecución
+        self.loop = asyncio.get_running_loop()
 
         if not self.connect():
             logger.error("ERROR - No se pudo conectar al MQTT broker")
