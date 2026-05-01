@@ -15,8 +15,7 @@ sudo apt-get install -y \
     python3-venv \
     bluetooth \
     bluez \
-    git \
-    sqlite3
+    git
 
 # Habilitar Bluetooth siempre
 echo "Habilitando Bluetooth..."
@@ -27,19 +26,32 @@ sudo systemctl start bluetooth
 echo "Configurando entorno virtual de Python..."
 PROJECT_ROOT="$(pwd)"
 
+# Eliminar venv antiguo si existe
+if [ -d "venv" ]; then
+    echo "Eliminando entorno virtual antiguo..."
+    rm -rf venv
+fi
+
+# Crear venv
 python3 -m venv --copies venv
 source venv/bin/activate
-pip install --upgrade pip -qq
-pip install -r requirements.txt -qq
+
+# Instalar dependencias
+pip install --upgrade pip -q
+pip install -r requirements.txt -q
 
 echo "Otorgando permisos BLE al proyecto..."
 sudo setcap cap_net_raw,cap_net_admin+eip "$PROJECT_ROOT/venv/bin/python3"
 
-# Crear los directorios necesarios
+deactivate
+
+# Crear directorios
 echo "Creando directorios de trabajo..."
 mkdir -p logs data
+sudo chown -R pi:pi /home/pi/TFG-RaspberryPi-BLE/raspberry-pi/logs
+chmod -R 775 /home/pi/TFG-RaspberryPi-BLE/raspberry-pi/logs
 
-# Copiar archivo de configuración de ejemplo
+# Copiar .env
 if [ ! -f ".env" ]; then
     if [ -f ".env.example" ]; then
         echo "Creando archivo de configuración..."
@@ -48,11 +60,20 @@ if [ ! -f ".env" ]; then
     fi
 fi
 
-deactivate
+# Crear wrapper script para ejecutar con sudo
+echo "Creando script de ejecución..."
+cat > run.sh << 'WRAPPER'
+#!/bin/bash
+cd "$(dirname "$0")"
+source venv/bin/activate
+exec python3 src/main.py
+WRAPPER
 
-# Configurar servicio systemd para auto-inicio
-echo "Configurando inicio automático (systemd)..."
-SYSTEMD_FILE="/etc/systemd/system/iot-agent.service"
+chmod +x run.sh
+
+# Configurar servicio systemd
+echo "Configurando servicio systemd..."
+SYSTEMD_FILE="/etc/systemd/system/ble-scanner.service"
 
 sudo tee $SYSTEMD_FILE > /dev/null << EOF
 [Unit]
@@ -68,16 +89,12 @@ User=$USER
 WorkingDirectory=$PROJECT_ROOT
 
 ExecStartPre=/bin/sleep 5
-ExecStart=$PROJECT_ROOT/venv/bin/python3 -m src.main
+ExecStart=$PROJECT_ROOT/venv/bin/python3 src/main.py
 
 Restart=always
 RestartSec=15
 StartLimitBurst=10
 StartLimitInterval=200
-
-StandardOutput=append:$PROJECT_ROOT/logs/system.log
-StandardError=append:$PROJECT_ROOT/logs/error.log
-SyslogIdentifier=iot-agent
 
 Environment="PYTHONUNBUFFERED=1"
 
@@ -92,17 +109,25 @@ EOF
 sudo systemctl daemon-reload
 
 echo ""
-echo "=================== Instalación completada ==================="
+echo "============== Instalación completada =============="
 echo ""
-echo "Para ejecutar el sistema:"
-echo "     - Primero editar archivo de configuración: nano .env"
+echo "Pasos siguientes:"
 echo ""
-echo "     Manual:"
-echo "       ./scripts/run_system.sh"
+echo "1. Editar configuración (OBLIGATORIO):"
+echo "   nano .env"
+echo "   # Añadir MQTT_USERNAME y MQTT_PASSWORD"
 echo ""
-echo "     Automático (al iniciar la Raspberry Pi):"
-echo "       ./scripts/setup_autostart.sh"
+echo "2. Probar manualmente:"
+echo "   sudo ./run.sh"
+echo "   # Debe mostrar: OK - MQTT conectado"
 echo ""
-echo "     Ver logs:"
-echo "       tail -f logs/system.log"
+echo "3. Habilitar auto-inicio:"
+echo "   sudo systemctl enable ble-scanner"
+echo "   sudo systemctl start ble-scanner"
+echo ""
+echo "4. Ver logs:"
+echo "   sudo journalctl -u ble-scanner -f"
+echo ""
+echo "5. Ver estado:"
+echo "   sudo systemctl status ble-scanner"
 echo ""
