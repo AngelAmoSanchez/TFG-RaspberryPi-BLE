@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from ..config import settings
 from .models import Base
@@ -28,21 +29,15 @@ class Database:
             # Configuración del engine
             engine_kwargs = {
                 "echo": settings.debug,
-                "pool_size": 10,
-                "max_overflow": 20,
-                "pool_pre_ping": True,
-                "pool_recycle": 3600,
+                "poolclass": NullPool,
+                "pool_pre_ping": False,
             }
 
-            # Supabase pgbouncer para evitar problemas con la cache
+            # Añadir connect_args específicos para asyncpg si usas Supabase pooler
             if "pooler.supabase.com" in settings.database_url or ":6543" in settings.database_url:
                 engine_kwargs["connect_args"] = {
                     "prepared_statement_cache_size": 0,
                     "statement_cache_size": 0,
-                    "server_settings": {
-                        "jit": "off",
-                        "wait_timeout": "30"
-                    }
                 }
 
             # Crear motor de base de datos asíncrono
