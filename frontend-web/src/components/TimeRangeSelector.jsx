@@ -75,7 +75,7 @@ const TimeRangeSelector = ({ onTimeRangeChange, currentValue = 5 }) => {
     <div className="relative">
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[120px] md:min-w-[200px]"
+        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[200px]"
       >
         <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
         <span className="text-sm font-medium text-gray-700 truncate">
