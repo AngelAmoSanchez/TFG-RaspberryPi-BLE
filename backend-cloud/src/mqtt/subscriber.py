@@ -85,6 +85,8 @@ class MQTTSubscriber:
             payload = json.loads(msg.payload.decode())
 
             device_id = payload.get("device_id")
+            device_name = payload.get("name")
+            device_location = payload.get("location")
             detections = payload.get("detections", [])
 
             if not device_id:
@@ -96,7 +98,7 @@ class MQTTSubscriber:
             # Programar el procesamiento en el bucle asyncio principal
             if self.loop:
                 asyncio.run_coroutine_threadsafe(
-                    self.process_message(device_id, detections), self.loop
+                    self.process_message(device_id, detections, device_name, device_location), self.loop
                 )
             else:
                 logger.error("ERROR - No hay bucle asyncio disponible para procesar el mensaje")
@@ -106,26 +108,17 @@ class MQTTSubscriber:
         except Exception as e:
             logger.error(f"ERROR - Error procesando mensaje: {e}", exc_info=True)
 
-    async def process_message(self, device_id: str, detections: list):
-        """Procesa el mensaje recibido y lo guarda en la base de datos
-
-        Args:
-            device_id: IoT agent identifier
-            detections: List of detection dicts
-        """
+    async def process_message(self, device_id: str, detections: list, name: Optional[str] = None, location: Optional[str] = None):
         try:
             async with database.get_session() as db:
-                # Actualiza el timestamp de last_seen del dispositivo
+                # Actualizar last_seen y, si hay nombre/ubicación, también los guarda
                 await self.device_service.update_last_seen(db, device_id)
-
-                # Guarda las detecciones
+                if name or location:
+                    await self.device_service.update_device_info(db, device_id, name, location)
                 if detections:
                     await self.detection_service.save_bulk_detections(db, detections, device_id)
-                    await ws_manager.broadcast_detection_event(device_id, len(detections))
                     logger.info(f"OK - Guardadas {len(detections)} detecciones")
-
                 await db.commit()
-
         except Exception as e:
             logger.error(f"ERROR - Error procesando mensajes: {e}", exc_info=True)
 
