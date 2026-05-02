@@ -38,6 +38,7 @@ class Database:
                 "connect_args": {
                     "statement_cache_size": 0,
                     "prepared_statement_cache_size": 0,
+                    "ssl": "require",
                 },
             }
 
