@@ -30,6 +30,7 @@ class MQTTSubscriber:
         topic: str,
         username: Optional[str] = None,
         password: Optional[str] = None,
+        semaphore: Optional[asyncio.Semaphore] = None
     ):
         """
         Args:
@@ -38,6 +39,7 @@ class MQTTSubscriber:
             topic: Topic al que está suscrito
             username: usuario MQTT (optional)
             password: contraseña MQTT (optional)
+            semaphore: semáforo para limitar concurrencia (optional)
         """
         if not MQTT_AVAILABLE:
             raise ImportError("Dependencia paho-mqtt no está instalada")
@@ -52,6 +54,7 @@ class MQTTSubscriber:
         self.connected = False
         self.running = False
         self.loop = None  # Se asignará al iniciar run()
+        self.semaphore = asyncio.Semaphore(3)   # máximo 3 mensajes a la vez
 
         # Servicios
         self.detection_service = DetectionProcessorService()
@@ -108,26 +111,27 @@ class MQTTSubscriber:
         except Exception as e:
             logger.error(f"ERROR - Error procesando mensaje: {e}", exc_info=True)
 
-    async def process_message(self, device_id: str, detections: list, name: Optional[str] = None, location: Optional[str] = None):
-        max_retries = 2
-        for attempt in range(max_retries):
-            try:
-                async with database.get_session() as db:
-                # Actualizar last_seen y, si hay nombre/ubicación, también los guarda
-                    await self.device_service.update_last_seen(db, device_id)
-                    if name or location:
-                        await self.device_service.update_device_info(db, device_id, name, location)
-                    if detections:
-                        await self.detection_service.save_bulk_detections(db, detections, device_id)
-                        logger.info(f"OK - Guardadas {len(detections)} detecciones")
-                    await db.commit()
-                return
-            except Exception as e:
-                logger.error(f"ERROR - Intento {attempt+1} fallido: {e}")
-                if attempt == max_retries - 1:
-                    logger.error(f"ERROR - No se pudo procesar mensaje tras {max_retries} intentos")
-                else:
-                    await asyncio.sleep(0.5)
+    async def process_message(self, device_id, detections, name=None, location=None):
+        async with self.semaphore:
+            max_retries = 2
+            for attempt in range(max_retries):
+                try:
+                    async with database.get_session() as db:
+                    # Actualizar last_seen y, si hay nombre/ubicación, también los guarda
+                        await self.device_service.update_last_seen(db, device_id)
+                        if name or location:
+                            await self.device_service.update_device_info(db, device_id, name, location)
+                        if detections:
+                            await self.detection_service.save_bulk_detections(db, detections, device_id)
+                            logger.info(f"OK - Guardadas {len(detections)} detecciones")
+                        await db.commit()
+                    return
+                except Exception as e:
+                    logger.error(f"ERROR - Intento {attempt+1} fallido: {e}")
+                    if attempt == max_retries - 1:
+                        logger.error(f"ERROR - No se pudo procesar mensaje tras {max_retries} intentos")
+                    else:
+                        await asyncio.sleep(2 ** attempt)
 
     def connect(self):
         """Conecta al broker MQTT"""
