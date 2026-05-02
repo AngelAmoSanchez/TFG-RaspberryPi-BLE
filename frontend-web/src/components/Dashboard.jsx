@@ -133,7 +133,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="mb-8">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               Sistema de Detección Bluetooth
@@ -143,42 +143,42 @@ const Dashboard = () => {
             </p>
           </div>
 
-        <div className="flex items-center gap-4 flex-wrap">
-          <ConnectionStatus connected={wsConnected} />
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
+            <ConnectionStatus connected={wsConnected} />
 
-          {showDeviceSelector && (
-            <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">
+            {showDeviceSelector && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
                   Dispositivo:
                 </label>
-              <select
-                value={selectedDeviceId}
-                onChange={(e) => setSelectedDeviceId(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
+                <select
+                  value={selectedDeviceId}
+                  onChange={(e) => setSelectedDeviceId(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
+                >
+                  <option value="">Todos los dispositivos</option>
+                  {activeDevices.map((device) => (
+                    <option key={device.device_id} value={device.device_id}>
+                      {device.name || device.device_id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <TimeRangeSelector
+                onTimeRangeChange={handleTimeRangeChange}
+                currentValue={timeConfig.value}
+              />
+
+              <button
+                onClick={refresh}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 whitespace-nowrap"
               >
-                <option value="">Todos los dispositivos</option>
-                {activeDevices.map((device) => (
-                  <option key={device.device_id} value={device.device_id}>
-                    {device.name || device.device_id}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 flex-1 justify-end">
-            <TimeRangeSelector
-              onTimeRangeChange={handleTimeRangeChange}
-              currentValue={timeConfig.value}
-            />
-
-            <button
-              onClick={refresh}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 whitespace-nowrap"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Actualizar
-            </button>
+                <RefreshCw className="w-4 h-4" />
+                Actualizar
+              </button>
           </div>
         </div>
       </div>
