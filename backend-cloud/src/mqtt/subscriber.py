@@ -109,18 +109,25 @@ class MQTTSubscriber:
             logger.error(f"ERROR - Error procesando mensaje: {e}", exc_info=True)
 
     async def process_message(self, device_id: str, detections: list, name: Optional[str] = None, location: Optional[str] = None):
-        try:
-            async with database.get_session() as db:
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                async with database.get_session() as db:
                 # Actualizar last_seen y, si hay nombre/ubicación, también los guarda
-                await self.device_service.update_last_seen(db, device_id)
-                if name or location:
-                    await self.device_service.update_device_info(db, device_id, name, location)
-                if detections:
-                    await self.detection_service.save_bulk_detections(db, detections, device_id)
-                    logger.info(f"OK - Guardadas {len(detections)} detecciones")
-                await db.commit()
-        except Exception as e:
-            logger.error(f"ERROR - Error procesando mensajes: {e}", exc_info=True)
+                    await self.device_service.update_last_seen(db, device_id)
+                    if name or location:
+                        await self.device_service.update_device_info(db, device_id, name, location)
+                    if detections:
+                        await self.detection_service.save_bulk_detections(db, detections, device_id)
+                        logger.info(f"OK - Guardadas {len(detections)} detecciones")
+                    await db.commit()
+                return
+            except Exception as e:
+                logger.error(f"ERROR - Intento {attempt+1} fallido: {e}")
+                if attempt == max_retries - 1:
+                    logger.error(f"ERROR - No se pudo procesar mensaje tras {max_retries} intentos")
+                else:
+                    await asyncio.sleep(0.5)
 
     def connect(self):
         """Conecta al broker MQTT"""
