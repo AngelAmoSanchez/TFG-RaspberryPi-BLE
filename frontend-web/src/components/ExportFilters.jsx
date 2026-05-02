@@ -8,8 +8,7 @@ const ExportFilters = () => {
   const [isExporting, setIsExporting] = useState(false);
   
   const [presetSelection, setPresetSelection] = useState('30-minutes');
-  
-  const [customValue, setCustomValue] = useState(5);
+  const [customValue, setCustomValue] = useState('5');
   const [customUnit, setCustomUnit] = useState('hours');
   
   const [startDate, setStartDate] = useState('');
@@ -29,6 +28,15 @@ const ExportFilters = () => {
     { value: 30, unit: 'days', label: 'Últimos 30 días', key: '30-days' },
   ];
 
+  // Validación del input personalizado
+  const handleCustomValueChange = (e) => {
+    // Filtra si no es un dígito
+    let raw = e.target.value.replace(/\D/g, '');
+    // Elimina ceros a la izquierda
+    raw = raw.replace(/^0+/, '');
+    setCustomValue(raw);
+  };
+
   const handleExport = async () => {
     setIsExporting(true);
     
@@ -42,9 +50,13 @@ const ExportFilters = () => {
           params.append(`last_${preset.unit}`, preset.value.toString());
         }
       } else if (filterMode === 'custom') {
-        if (customValue > 0) {
-          params.append(`last_${customUnit}`, customValue.toString());
+        const num = parseInt(customValue, 10);
+        if (!num || num <= 0) {
+          alert('Por favor, introduce un número válido mayor que 0.');
+          setIsExporting(false);
+          return;
         }
+        params.append(`last_${customUnit}`, num.toString());
       } else if (filterMode === 'range') {
         if (startDate) params.append('start_date', startDate);
         if (endDate) params.append('end_date', endDate);
@@ -54,35 +66,17 @@ const ExportFilters = () => {
       if (selectedZone) params.append('zone', selectedZone);
       if (selectedDevice) params.append('device_id', selectedDevice);
       
-      console.log('Export URL params:', params.toString());
-      
-      // Realizar la solicitud de exportación
       const response = await api.client.get(
         `/api/v1/export/detections/csv?${params.toString()}`, 
         {
           responseType: 'blob',
-          headers: {
-            'Accept': 'text/csv'
-          }
+          headers: { 'Accept': 'text/csv' },
         }
       );
       
-      console.log('Response received:', {
-        status: response.status,
-        size: response.data.size,
-        type: response.data.type
-      });
-      
-      // Crear enlace para descargar el archivo CSV
-      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      
-      // Extraer nombre de archivo del header Content-Disposition si está presente
+      // Extraer nombre de archivo de la cabecera Content-Disposition
       const contentDisposition = response.headers['content-disposition'];
       let filename = 'detections.csv';
-      
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
         if (filenameMatch && filenameMatch[1]) {
@@ -90,24 +84,18 @@ const ExportFilters = () => {
         }
       }
       
-      console.log('Downloading as:', filename);
-      
+      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
       link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
-      console.log('Download initiated successfully');
-      
     } catch (error) {
       console.error('Error al exportar:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
-      alert(`Error al descargar el archivo CSV: ${error.message}\nVerifica que haya datos disponibles en el rango seleccionado.`);
+      alert(`Error al descargar el archivo CSV: ${error.message}`);
     } finally {
       setIsExporting(false);
     }
@@ -189,11 +177,11 @@ const ExportFilters = () => {
           </label>
           <div className="flex gap-2">
             <input
-              type="number"
-              min="1"
-              max="365"
+              type="text"
+              inputMode="numeric"
+              pattern="[1-9][0-9]*"
               value={customValue}
-              onChange={(e) => setCustomValue(Number(e.target.value))}
+              onChange={handleCustomValueChange}
               className="w-1/3 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Cantidad"
             />
@@ -208,7 +196,7 @@ const ExportFilters = () => {
             </select>
           </div>
           <p className="text-sm text-gray-500 mt-2">
-            Se exportarán las detecciones de los últimos {customValue}{' '}
+            Se exportarán las detecciones de los últimos {customValue || '?'}{' '}
             {customUnit === 'minutes' ? 'minutos' : customUnit === 'hours' ? 'horas' : 'días'}
           </p>
         </div>
@@ -241,7 +229,6 @@ const ExportFilters = () => {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-
           {startDate && endDate && new Date(startDate) > new Date(endDate) && (
             <div className="p-2 bg-red-50 border border-red-200 rounded-md">
               <p className="text-xs text-red-600">
@@ -254,7 +241,6 @@ const ExportFilters = () => {
 
       <div className="mb-6 space-y-4 pt-4 border-t border-gray-200">
         <h3 className="text-sm font-medium text-gray-700">Filtros Adicionales (Opcional)</h3>
-        
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Zona
@@ -270,7 +256,6 @@ const ExportFilters = () => {
             <option value="far">Lejos (Far)</option>
           </select>
         </div>
-        
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Dispositivo IoT
@@ -284,21 +269,19 @@ const ExportFilters = () => {
             <option value="">Todos los dispositivos</option>
             {devices.map((device) => (
               <option key={device.device_id} value={device.device_id}>
-                {device.name || device.device_id}
-                {!device.is_active && ' (Inactivo)'}
+                {device.name || device.device_id}{!device.is_active && ' (Inactivo)'}
               </option>
             ))}
           </select>
-          {devicesLoading && (
-            <p className="text-xs text-gray-500 mt-1">Cargando dispositivos...</p>
-          )}
+          {devicesLoading && <p className="text-xs text-gray-500 mt-1">Cargando dispositivos...</p>}
         </div>
       </div>
 
       <button
         onClick={handleExport}
         disabled={isExporting || (filterMode === 'range' && (!startDate || !endDate)) ||
-          (filterMode === 'range' && startDate && endDate && new Date(startDate) > new Date(endDate))}
+          (filterMode === 'range' && startDate && endDate && new Date(startDate) > new Date(endDate)) ||
+          (filterMode === 'custom' && !customValue)}
         className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
       >
         {isExporting ? (
@@ -316,8 +299,7 @@ const ExportFilters = () => {
 
       <div className="mt-4 p-4 bg-blue-50 rounded-lg">
         <p className="text-sm text-blue-800">
-          <strong>💡 Nota:</strong> El archivo CSV incluirá todas las columnas: ID, Hash del
-          dispositivo, RSSI, Zona, Timestamp, Device ID, Fecha y Hora.
+          <strong> Nota:</strong> El archivo CSV incluirá todas las columnas: ID, Hash del dispositivo, RSSI, Zona, Timestamp, Device ID, Fecha y Hora.
         </p>
       </div>
     </div>
