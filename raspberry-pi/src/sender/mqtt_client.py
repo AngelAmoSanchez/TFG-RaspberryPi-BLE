@@ -79,13 +79,18 @@ class MQTTClient:
         try:
             # Crear cliente MQTT
             self._client = mqtt.Client(
-                client_id="backend-subscriber",
+                client_id=f"rpi-agent-{self.device_id}",
                 protocol=mqtt.MQTTv311,
                 clean_session=True,
             )
 
             if self.username and self.password:
                 self._client.username_pw_set(self.username, self.password)
+
+            if self.port == 8883:
+                import ssl
+                self._client.tls_set(cert_reqs=ssl.CERT_NONE)
+                self._client.tls_insecure_set(True)
 
             # Callbacks
             self._client.on_connect = self._on_connect
@@ -210,7 +215,6 @@ class MQTTClient:
         self._buffer.append(message)
         logger.debug(f"Mensaje guardado en el buffer (total: {len(self._buffer)})")
         return True
-
     def _flush_buffer(self):
         """Envía todos los mensajes del buffer al reconectar con el backend"""
         if not self._buffer:
@@ -248,7 +252,6 @@ class MQTTClient:
             logger.info("OK - MQTT desconectado")
         else:
             logger.warning(f"WARNING - MQTT desconectado repentinamente (rc={rc})")
-
     def _on_publish(self, client, userdata, mid):
         """Callback cuando se completa una publicación"""
         logger.debug(f"Mensaje {mid} publicado exitosamente")
