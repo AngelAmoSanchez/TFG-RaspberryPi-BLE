@@ -105,20 +105,25 @@ class SettingsService:
         counts = result.first()
 
         # Actualiza zonas
+        # NEAR
         await db.execute(
-            update(Detection).where(Detection.rssi >= near_threshold).values(zone=ZoneEnum.NEAR)
+            update(Detection)
+            .where(Detection.rssi >= near_threshold)
+            .values(zone=ZoneEnum.NEAR.name)
         )
 
         # MEDIUM
         await db.execute(
             update(Detection)
             .where((Detection.rssi >= medium_threshold) & (Detection.rssi < near_threshold))
-            .values(zone=ZoneEnum.MEDIUM)
+            .values(zone=ZoneEnum.MEDIUM.name)
         )
 
         # FAR
         await db.execute(
-            update(Detection).where(Detection.rssi < medium_threshold).values(zone=ZoneEnum.FAR)
+            update(Detection)
+            .where(Detection.rssi < medium_threshold)
+            .values(zone=ZoneEnum.FAR.name)
         )
 
         await db.commit()

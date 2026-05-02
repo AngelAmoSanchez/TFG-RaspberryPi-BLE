@@ -120,7 +120,7 @@ class DetectionProcessorService:
         detection = Detection(
             device_hash=device_hash,
             rssi=rssi,
-            zone=zone_enum,
+            zone=zone_enum.name,
             device_id=device_id,
             timestamp=timestamp or timezone_utils.now(),
         )
