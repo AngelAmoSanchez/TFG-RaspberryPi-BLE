@@ -7,7 +7,6 @@
   line-height: 1.5;
   font-weight: 400;
   color-scheme: light;
-  overflow-x: hidden;
 }
 
 body {
@@ -15,12 +14,10 @@ body {
   min-height: 100vh;
   font-family: Arial, sans-serif;
   background-color: #f0f0f0;
-  overflow-x: hidden;
 }
 
 * {
   box-sizing: border-box;
-  overflow-x: hidden;
 }
 
 ::-webkit-scrollbar {
