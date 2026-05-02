@@ -166,7 +166,7 @@ const Dashboard = () => {
               </div>
             )}
 
-            <div className="flex items-center gap-2 flex-wrap justify-end">
+            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 w-full sm:w-auto">
               <TimeRangeSelector
                 onTimeRangeChange={handleTimeRangeChange}
                 currentValue={timeConfig.value}
@@ -174,7 +174,7 @@ const Dashboard = () => {
 
               <button
                 onClick={refresh}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 whitespace-nowrap"
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 whitespace-nowrap w-full sm:w-auto justify-center"
               >
                 <RefreshCw className="w-4 h-4" />
                 Actualizar
