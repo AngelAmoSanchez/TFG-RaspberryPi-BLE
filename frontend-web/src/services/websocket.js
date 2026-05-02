@@ -54,6 +54,9 @@ class WebSocketService {
     };
 
     this.socket.onmessage = (event) => {
+      if (typeof event.data === 'string' && !event.data.startsWith('{')) {
+        return;
+      }
       try {
         const message = JSON.parse(event.data);
         if (message.type && this.listeners.has(message.type)) {

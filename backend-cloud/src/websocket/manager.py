@@ -83,7 +83,7 @@ class WebSocketManager:
         """
         message = {
             "type": "detection_event",
-            "timestamp": timezone_utils.now(),
+            "timestamp": timezone_utils.now().isoformat(),
             "device_id": device_id,
             "count": detections_count,
         }
@@ -98,7 +98,7 @@ class WebSocketManager:
         """
         message = {
             "type": "stats_update",
-            "timestamp": timezone_utils.now(),
+            "timestamp": timezone_utils.now().isoformat(),
             "data": stats,
         }
 
