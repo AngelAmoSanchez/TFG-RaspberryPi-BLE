@@ -29,8 +29,11 @@ class Database:
             # Configuración del engine
             engine_kwargs = {
                 "echo": settings.debug,
-                "poolclass": NullPool,
-                "pool_pre_ping": False,
+                "pool_size": 10,
+                "max_overflow": 5,
+                "pool_timeout": 30,
+                "pool_pre_ping": True,
+                "pool_recycle": 300,
             }
 
             # Añadir connect_args específicos para asyncpg si usas Supabase pooler
@@ -39,6 +42,9 @@ class Database:
                     "prepared_statement_cache_size": 0,
                     "statement_cache_size": 0,
                     "ssl": "require",
+                    "server_settings": {
+                        "jit": "off"
+                    }
                 }
 
 
