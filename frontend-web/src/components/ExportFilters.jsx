@@ -112,7 +112,7 @@ const ExportFilters = () => {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Tipo de Filtro
         </label>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <button
             onClick={() => setFilterMode('preset')}
             className={`px-4 py-2 rounded-lg border-2 transition-colors ${
@@ -232,7 +232,7 @@ const ExportFilters = () => {
           {startDate && endDate && new Date(startDate) > new Date(endDate) && (
             <div className="p-2 bg-red-50 border border-red-200 rounded-md">
               <p className="text-xs text-red-600">
-                ⚠️ La fecha de inicio debe ser anterior a la fecha de fin
+                La fecha de inicio debe ser anterior a la fecha de fin
               </p>
             </div>
           )}
@@ -298,7 +298,7 @@ const ExportFilters = () => {
       </button>
 
       <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-        <p className="text-sm text-blue-800">
+        <p className="text-sm text-blue-800 break-words">
           <strong> Nota:</strong> El archivo CSV incluirá todas las columnas: ID, Hash del dispositivo, RSSI, Zona, Timestamp, Device ID, Fecha y Hora.
         </p>
       </div>
