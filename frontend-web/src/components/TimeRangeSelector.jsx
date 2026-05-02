@@ -91,7 +91,7 @@ const TimeRangeSelector = ({ onTimeRangeChange, currentValue = 5 }) => {
             onClick={() => setShowDropdown(false)}
           />
           
-          <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
+          <div className="absolute right-0 sm:right-0 mt-2 w-[calc(100vw-3rem)] sm:w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
             <div className="flex border-b border-gray-200">
               <button
                 onClick={() => handleModeSwitch('preset')}
