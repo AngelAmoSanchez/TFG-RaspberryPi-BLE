@@ -29,12 +29,17 @@ class Database:
             # Configuración del engine
             engine_kwargs = {
                 "echo": settings.debug,
-                "poolclass": NullPool,
-                "pool_pre_ping": False,
+                "poolclass": QueuePool,
+                "pool_size": 5,
+                "max_overflow": 5,
+                "pool_recycle": 300,
+                "pool_pre_ping": True,
+                "pool_timeout": 10,
                 "connect_args": {
                     "statement_cache_size": 0,
-                    "prepared_statement_cache_size": 0,  # redundante pero seguro
-                }
+                    "prepared_statement_cache_size": 0,
+                    "ssl": True,
+                },
             }
 
             # Crear motor de base de datos asíncrono
