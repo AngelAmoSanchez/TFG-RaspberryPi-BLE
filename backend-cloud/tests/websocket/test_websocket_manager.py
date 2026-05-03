@@ -1,7 +1,9 @@
+from datetime import datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from src.utils.timezone_utils import SPAIN_TZ
 from src.websocket.manager import WebSocketManager
 
 pytestmark = pytest.mark.unit
@@ -130,7 +132,9 @@ class TestBroadcast:
     @patch("src.websocket.manager.timezone_utils.now")
     async def test_broadcast_detection_event(self, mock_now):
         """Valida el helper de detección de eventos."""
-        mock_now.return_value = "2026-04-27T10:00:00"
+        # El mock debe devolver un objeto datetime compatible con .isoformat()
+        mock_date = datetime(2026, 4, 27, 10, 0, 0, tzinfo=SPAIN_TZ)
+        mock_now.return_value = mock_date
         manager = WebSocketManager()
         mock_ws = MockWebSocket()
         await manager.connect(mock_ws)
@@ -139,7 +143,7 @@ class TestBroadcast:
 
         expected = {
             "type": "detection_event",
-            "timestamp": "2026-04-27T10:00:00",
+            "timestamp": mock_date.isoformat(),
             "device_id": "dev_01",
             "count": 5,
         }
@@ -149,7 +153,8 @@ class TestBroadcast:
     @patch("src.websocket.manager.timezone_utils.now")
     async def test_broadcast_stats_update(self, mock_now):
         """Valida el helper de actualización de stats."""
-        mock_now.return_value = "2026-04-27T10:00:00"
+        mock_date = datetime(2026, 4, 27, 10, 0, 0, tzinfo=SPAIN_TZ)
+        mock_now.return_value = mock_date
         manager = WebSocketManager()
         mock_ws = MockWebSocket()
         await manager.connect(mock_ws)

@@ -124,7 +124,7 @@ class TestDetectionProcessorServiceExtended:
             result = await service.save_detection(db_session, valid_hash, -70, "dev_01")
 
             assert isinstance(result, Detection)
-            assert result.zone == ZoneEnum.MEDIUM
+            assert result.zone == ZoneEnum.MEDIUM.name
             assert db_session.add.called
             assert db_session.flush.called
 

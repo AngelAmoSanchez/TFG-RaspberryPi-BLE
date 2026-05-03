@@ -91,9 +91,15 @@ class TestMQTTSubscriberDetailed:
     async def test_process_message_exception(self, caplog):
         """Valida el manejo de excepciones al procesar mensaje (Exception general)"""
         sub = MQTTSubscriber("localhost", 1883, "test")
+        caplog.set_level("ERROR")
+
         with patch("src.mqtt.subscriber.database.get_session", side_effect=Exception("DB Down")):
-            await sub.process_message("dev1", [])
-            assert "ERROR - Error procesando mensajes" in caplog.text
+            # Mockeamos sleep para que el test no espere los reintentos reales
+            with patch("asyncio.sleep", return_value=None):
+                await sub.process_message("dev1", [])
+
+                # Buscamos el mensaje final de la función tras agotar los 2 intentos
+                assert "ERROR - No se pudo procesar mensaje tras 2 intentos" in caplog.text
 
     async def test_run_loop_and_reconnect(self):
         """Valida que el bucle de run intente reconectar"""

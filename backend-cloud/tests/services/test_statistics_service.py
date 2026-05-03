@@ -309,3 +309,49 @@ class TestStatisticsService:
 
         assert result["total"] == 0
         assert result["distribution"] == {}
+
+    @pytest.mark.asyncio
+    async def test_get_realtime_stats_endpoint(self, client):
+        """Valida que el endpoint realtime llama correctamente al servicio con los parámetros de consulta."""
+        with patch(
+            "src.api.routes.statistics.StatisticsService.get_real_time_stats",
+            new_callable=AsyncMock,
+        ) as mock_service:
+            mock_service.return_value = {"total": {"unique_devices": 5}, "by_zone": {}}
+
+            response = client.get("/api/v1/statistics/realtime?minutes=10&device_id=iot_01")
+
+            assert response.status_code == 200
+            assert response.json()["total"]["unique_devices"] == 5
+            mock_service.assert_called_once()
+            args, _ = mock_service.call_args
+            assert args[1] == 10  # minutos
+            assert args[2] == "iot_01"  # device_id
+
+    @pytest.mark.asyncio
+    async def test_get_zone_distribution_endpoint(self, client):
+        """Valida que el endpoint distribution calcula correctamente los rangos de tiempo y devuelve los datos."""
+        with patch(
+            "src.api.routes.statistics.StatisticsService.get_zone_distribution",
+            new_callable=AsyncMock,
+        ) as mock_service:
+            mock_service.return_value = {
+                "total": 100,
+                "distribution": {"near": {"count": 100, "percentage": 100.0}},
+            }
+
+            response = client.get("/api/v1/statistics/distribution?hours=12")
+
+            # Verificaciones
+            assert response.status_code == 200
+            data = response.json()
+            assert "start_time" in data
+            assert "end_time" in data
+            assert data["total"] == 100
+
+            mock_service.assert_called_once()
+            args, _ = mock_service.call_args
+            start_dt = args[1]
+            end_dt = args[2]
+            diff = end_dt - start_dt
+            assert diff.total_seconds() / 3600 == pytest.approx(12, 0.01)
