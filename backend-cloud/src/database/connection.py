@@ -42,17 +42,11 @@ class Database:
                     "prepared_statement_cache_size": 0,
                     "statement_cache_size": 0,
                     "ssl": "require",
-                    "server_settings": {
-                        "jit": "off"
-                    }
+                    "server_settings": {"jit": "off"},
                 }
 
-
             # Crear motor de base de datos asíncrono
-            self.engine = create_async_engine(
-                settings.database_url,
-                **engine_kwargs
-            )
+            self.engine = create_async_engine(settings.database_url, **engine_kwargs)
 
             # Crear generador de sesiones
             self.async_session_maker = async_sessionmaker(

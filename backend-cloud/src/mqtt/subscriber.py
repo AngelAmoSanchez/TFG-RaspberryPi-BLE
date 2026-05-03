@@ -30,7 +30,7 @@ class MQTTSubscriber:
         topic: str,
         username: Optional[str] = None,
         password: Optional[str] = None,
-        semaphore: Optional[asyncio.Semaphore] = None
+        semaphore: Optional[asyncio.Semaphore] = None,
     ):
         """
         Args:
@@ -54,7 +54,7 @@ class MQTTSubscriber:
         self.connected = False
         self.running = False
         self.loop = None  # Se asignará al iniciar run()
-        self.semaphore = asyncio.Semaphore(3)   # máximo 3 mensajes a la vez
+        self.semaphore = asyncio.Semaphore(3)  # máximo 3 mensajes a la vez
 
         # Servicios
         self.detection_service = DetectionProcessorService()
@@ -101,7 +101,8 @@ class MQTTSubscriber:
             # Programar el procesamiento en el bucle asyncio principal
             if self.loop:
                 asyncio.run_coroutine_threadsafe(
-                    self.process_message(device_id, detections, device_name, device_location), self.loop
+                    self.process_message(device_id, detections, device_name, device_location),
+                    self.loop,
                 )
             else:
                 logger.error("ERROR - No hay bucle asyncio disponible para procesar el mensaje")
@@ -117,21 +118,27 @@ class MQTTSubscriber:
             for attempt in range(max_retries):
                 try:
                     async with database.get_session() as db:
-                    # Actualizar last_seen y, si hay nombre/ubicación, también los guarda
+                        # Actualizar last_seen y, si hay nombre/ubicación, también los guarda
                         await self.device_service.update_last_seen(db, device_id)
                         if name or location:
-                            await self.device_service.update_device_info(db, device_id, name, location)
+                            await self.device_service.update_device_info(
+                                db, device_id, name, location
+                            )
                         if detections:
-                            await self.detection_service.save_bulk_detections(db, detections, device_id)
+                            await self.detection_service.save_bulk_detections(
+                                db, detections, device_id
+                            )
                             logger.info(f"OK - Guardadas {len(detections)} detecciones")
                         await db.commit()
                     return
                 except Exception as e:
                     logger.error(f"ERROR - Intento {attempt+1} fallido: {e}")
                     if attempt == max_retries - 1:
-                        logger.error(f"ERROR - No se pudo procesar mensaje tras {max_retries} intentos")
+                        logger.error(
+                            f"ERROR - No se pudo procesar mensaje tras {max_retries} intentos"
+                        )
                     else:
-                        await asyncio.sleep(2 ** attempt)
+                        await asyncio.sleep(2**attempt)
 
     def connect(self):
         """Conecta al broker MQTT"""
@@ -149,7 +156,7 @@ class MQTTSubscriber:
                 ca_certs=None,
                 certfile=None,
                 cert_reqs=ssl.CERT_REQUIRED,
-                tls_version=ssl.PROTOCOL_TLS
+                tls_version=ssl.PROTOCOL_TLS,
             )
 
             # Callbacks

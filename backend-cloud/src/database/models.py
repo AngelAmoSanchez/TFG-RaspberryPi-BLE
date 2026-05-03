@@ -33,9 +33,7 @@ class Detection(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     device_hash = Column(String(64), nullable=False, index=True)
     rssi = Column(Integer, nullable=False)
-    zone = Column(
-        String(10), nullable=False, index=True
-    )
+    zone = Column(String(10), nullable=False, index=True)
     timestamp = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
