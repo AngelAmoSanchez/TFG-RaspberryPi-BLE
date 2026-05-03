@@ -4,7 +4,7 @@ echo "====== Estado del Sistema AGente IoT ======"
 echo ""
 
 # Verificar si el servicio está instalado
-if [ ! -f "/etc/systemd/system/iot-agent.service" ]; then
+if [ ! -f "/etc/systemd/system/ble-scanner.service" ]; then
     echo "ERROR - Servicio no instalado"
     echo "   Ejecuta: ./install.sh"
     exit 1
@@ -12,13 +12,13 @@ fi
 
 # Estado del servicio
 echo "Servicio systemd:"
-if systemctl is-active --quiet iot-agent; then
+if systemctl is-active --quiet ble-scanner; then
     echo "  OK - Estado: Activo"
 else
     echo "  ERROR - Estado: Inactivo"
 fi
 
-if systemctl is-enabled --quiet iot-agent; then
+if systemctl is-enabled --quiet ble-scanner; then
     echo "  OK - Auto-inicio: Habilitado"
 else
     echo "  WARN - Auto-inicio: Deshabilitado"
@@ -62,8 +62,8 @@ echo ""
 # Logs recientes
 echo "Últimas 5 líneas del log del sistema:"
 echo "---"
-if [ -f "logs/system.log" ]; then
-    tail -n 5 logs/system.log
+if systemctl is-active --quiet ble-scanner; then
+    journalctl -u ble-scanner | tail -n 5
 else
     echo "  (No hay logs aún)"
 fi
@@ -72,4 +72,4 @@ echo ""
 echo "---"
 echo ""
 echo "Para ver logs en tiempo real: tail -f logs/system.log"
-echo "Para ver logs de systemd: sudo journalctl -u iot-agent -f"
+echo "Para ver logs de systemd: sudo journalctl -u ble-scanner -f"
