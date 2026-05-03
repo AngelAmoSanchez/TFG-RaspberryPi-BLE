@@ -58,8 +58,12 @@ const DeviceList = ({ devices, loading }) => {
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center text-sm text-gray-600">
                   <Calendar className="w-4 h-4 mr-1" />
-                  {device.last_seen 
-                    ? new Date(device.last_seen).toLocaleString('es-ES')
+                  {device.last_seen
+                    ? new Intl.DateTimeFormat('es-ES', {
+                      dateStyle: 'short',
+                      timeStyle: 'medium',
+                      timeZone: 'Europe/Madrid',
+                    }).format(new Date(device.last_seen))
                     : 'Nunca'
                   }
                 </div>
