@@ -140,38 +140,33 @@ describe('WebSocketService', () => {
 
   it('debe reconectar automáticamente si el socket se cierra de forma inesperada', () => {
     websocketService.connect();
-    // Usamos la instancia capturada para evitar errores de "null"[cite: 16]
     const socket = lastCreatedSocket;
     const scheduleSpy = vi.spyOn(websocketService, 'scheduleReconnect');
     
-    // Simular cierre anormal code 1006 (Línea 43)[cite: 15]
     socket.onclose({ code: 1006, reason: 'Abnormal' });
 
     expect(websocketService.connected).toBe(false);
-    expect(scheduleSpy).toHaveBeenCalled(); // Línea 49[cite: 15]
+    expect(scheduleSpy).toHaveBeenCalled();
   });
 
   it('debe reconectar automáticamente si el socket se cierra de forma inesperada', () => {
     websocketService.connect();
-    // Usamos la instancia capturada para evitar errores de "null"[cite: 16]
     const socket = lastCreatedSocket;
     const scheduleSpy = vi.spyOn(websocketService, 'scheduleReconnect');
     
-    // Simular cierre anormal code 1006 (Línea 43)[cite: 15]
+
     socket.onclose({ code: 1006, reason: 'Abnormal' });
 
     expect(websocketService.connected).toBe(false);
-    expect(scheduleSpy).toHaveBeenCalled(); // Línea 49[cite: 15]
+    expect(scheduleSpy).toHaveBeenCalled();
   });
 
-  // --- CORRECCIÓN LÍNEAS 72-81 (Estrategia Reconexión) ---
   it('debe implementar backoff exponencial en los intentos de reconexión', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     websocketService.reconnectAttempts = 1; 
     
     websocketService.scheduleReconnect();
 
-    // Línea 78: Cálculo de delay exponencial
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Reconectando en 2000ms'));
     expect(websocketService.reconnectAttempts).toBe(2);
   });
@@ -180,7 +175,6 @@ describe('WebSocketService', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     websocketService.on('test_event', () => { throw new Error('Fail'); });
     
-    // Try/Catch en la ejecución de callbacks
     websocketService.emit('test_event', {});
     
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Error in test_event listener:'), expect.any(Error));
