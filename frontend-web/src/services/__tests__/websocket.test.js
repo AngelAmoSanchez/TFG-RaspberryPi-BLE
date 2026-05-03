@@ -1,51 +1,68 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { io } from 'socket.io-client';
 import websocketService from '../websocket';
 
-// Mock de socket.io-client
-vi.mock('socket.io-client', () => {
-  const mSocket = {
-    on: vi.fn(),
-    emit: vi.fn(),
-    disconnect: vi.fn(),
-    connected: false,
-  };
-  return { io: vi.fn(() => mSocket) };
-});
+// Variable para capturar la última instancia creada
+let lastCreatedSocket = null;
+
+// Mock global del objeto WebSocket nativo del navegador
+class MockWebSocket {
+  constructor(url) {
+    this.url = url;
+    this.readyState = 0; // CONNECTING
+    this.send = vi.fn();
+    this.close = vi.fn();
+
+    lastCreatedSocket = this;
+    websocketService.socket = this;
+    
+    setTimeout(() => {
+      if (this.onopen) {
+        this.readyState = 1; // OPEN
+        this.onopen();
+      }
+    }, 0);
+  }
+}
+
+// Inyectar el mock en el entorno global de Vitest
+global.WebSocket = MockWebSocket;
+global.WebSocket.OPEN = 1;
 
 describe('WebSocketService', () => {
-  let mockSocket;
-
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
-    mockSocket = io();
-    websocketService.socket = null;
+    websocketService.disconnect();
     websocketService.listeners = new Map();
+    // Resetear contadores de reconexión para tests limpios
+    websocketService.reconnectAttempts = 0;
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it('connect() no debe duplicar la conexión si ya está conectado', () => {
-    mockSocket.connected = true;
-    websocketService.socket = mockSocket;
+    websocketService.connect();
+    // Forzamos el estado OPEN para el mock
+    websocketService.socket.readyState = WebSocket.OPEN;
     
+    const initialSocket = websocketService.socket;
     websocketService.connect();
     
-    expect(io).not.toHaveBeenCalledTimes(2);
+    expect(websocketService.socket).toBe(initialSocket);
   });
 
-  it('debe registrar oyentes internos al conectar (connect, disconnect, etc)', () => {
+  it('debe configurar los handlers nativos al conectar', () => {
     websocketService.connect();
     
-    expect(mockSocket.on).toHaveBeenCalledWith('connect', expect.any(Function));
-    expect(mockSocket.on).toHaveBeenCalledWith('stats_update', expect.any(Function));
-    expect(mockSocket.on).toHaveBeenCalledWith('detection_event', expect.any(Function));
+    expect(websocketService.socket.onopen).toBeTypeOf('function');
+    expect(websocketService.socket.onmessage).toBeTypeOf('function');
+    expect(websocketService.socket.onclose).toBeTypeOf('function');
   });
 
-  it('el sistema de eventos on/emit debe funcionar independientemente del socket', () => {
+  it('el sistema de eventos on/emit debe funcionar internamente', () => {
     const callback = vi.fn();
     websocketService.on('custom_event', callback);
     
@@ -65,42 +82,107 @@ describe('WebSocketService', () => {
   });
 
   it('debe enviar pings cada 30 segundos si está conectado', () => {
-    mockSocket.connected = true;
     websocketService.connect();
+    // Simular que el socket se abre
+    websocketService.socket.readyState = WebSocket.OPEN;
+    websocketService.socket.onopen();
 
-    vi.advanceTimersByTime(30000);
+    // El código real usa un intervalo de 15000ms
+    vi.advanceTimersByTime(15000);
     
-    expect(mockSocket.emit).toHaveBeenCalledWith('ping');
+    expect(websocketService.socket.send).toHaveBeenCalledWith('ping');
   });
 
   it('send() debe advertir si el socket no está conectado', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    mockSocket.connected = false;
-    websocketService.socket = mockSocket;
-
-    websocketService.send('test', {});
+    
+    // Socket no conectado (readyState !== OPEN)
+    websocketService.send('test', { data: 1 });
     
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('no conectado'));
   });
 
-  it('disconnect() debe limpiar el estado correctamente', () => {
-    websocketService.socket = mockSocket;
+  it('send() debe enviar JSON stringify si está conectado', () => {
+    websocketService.connect();
+    websocketService.socket.readyState = WebSocket.OPEN;
+
+    websocketService.send('test_event', { value: 123 });
+    
+    expect(websocketService.socket.send).toHaveBeenCalledWith(
+      JSON.stringify({ type: 'test_event', value: 123 })
+    );
+  });
+
+  it('disconnect() debe limpiar el estado y cerrar el socket', () => {
+    websocketService.connect();
+    const socketSpy = websocketService.socket;
     websocketService.connected = true;
 
     websocketService.disconnect();
 
-    expect(mockSocket.disconnect).toHaveBeenCalled();
+    expect(socketSpy.close).toHaveBeenCalledWith(1000, 'Client disconnect');
     expect(websocketService.socket).toBeNull();
     expect(websocketService.connected).toBe(false);
   });
 
-  it('isConnected() debe verificar ambas condiciones', () => {
+  it('isConnected() debe verificar la propiedad connected y el readyState', () => {
+    websocketService.connect();
+    
+    // Caso 1: Marcado como conectado y socket en OPEN
     websocketService.connected = true;
-    mockSocket.connected = true;
-    websocketService.socket = mockSocket;
+    websocketService.socket.readyState = WebSocket.OPEN;
     expect(websocketService.isConnected()).toBe(true);
 
-    mockSocket.connected = false;
+    // Caso 2: Socket cerrado
+    websocketService.socket.readyState = 0; // CONNECTING
     expect(websocketService.isConnected()).toBe(false);
+  });
+
+  it('debe reconectar automáticamente si el socket se cierra de forma inesperada', () => {
+    websocketService.connect();
+    // Usamos la instancia capturada para evitar errores de "null"[cite: 16]
+    const socket = lastCreatedSocket;
+    const scheduleSpy = vi.spyOn(websocketService, 'scheduleReconnect');
+    
+    // Simular cierre anormal code 1006 (Línea 43)[cite: 15]
+    socket.onclose({ code: 1006, reason: 'Abnormal' });
+
+    expect(websocketService.connected).toBe(false);
+    expect(scheduleSpy).toHaveBeenCalled(); // Línea 49[cite: 15]
+  });
+
+  it('debe reconectar automáticamente si el socket se cierra de forma inesperada', () => {
+    websocketService.connect();
+    // Usamos la instancia capturada para evitar errores de "null"[cite: 16]
+    const socket = lastCreatedSocket;
+    const scheduleSpy = vi.spyOn(websocketService, 'scheduleReconnect');
+    
+    // Simular cierre anormal code 1006 (Línea 43)[cite: 15]
+    socket.onclose({ code: 1006, reason: 'Abnormal' });
+
+    expect(websocketService.connected).toBe(false);
+    expect(scheduleSpy).toHaveBeenCalled(); // Línea 49[cite: 15]
+  });
+
+  // --- CORRECCIÓN LÍNEAS 72-81 (Estrategia Reconexión) ---
+  it('debe implementar backoff exponencial en los intentos de reconexión', () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    websocketService.reconnectAttempts = 1; 
+    
+    websocketService.scheduleReconnect();
+
+    // Línea 78: Cálculo de delay exponencial
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Reconectando en 2000ms'));
+    expect(websocketService.reconnectAttempts).toBe(2);
+  });
+
+  it('debe capturar errores dentro de los callbacks de los listeners', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    websocketService.on('test_event', () => { throw new Error('Fail'); });
+    
+    // Try/Catch en la ejecución de callbacks
+    websocketService.emit('test_event', {});
+    
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Error in test_event listener:'), expect.any(Error));
   });
 });
