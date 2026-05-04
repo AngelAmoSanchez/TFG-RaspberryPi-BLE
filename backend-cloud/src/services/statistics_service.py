@@ -380,6 +380,21 @@ class StatisticsService:
         result = await db.execute(query)
         rows = result.all()
 
+        if rows:
+            logger.info(
+                f"Histograma {range_key}: SQL devolvió {len(rows)} filas. "
+                f"Primer bucket raw: {rows[0].bucket!r} (type={type(rows[0].bucket).__name__}), "
+                f"zone={rows[0].zone!r}"
+            )
+        else:
+            logger.info(
+                f"Histograma {range_key}: SQL devolvió 0 filas. "
+                f"WHERE: start={start.isoformat()}, end={end.isoformat()}"
+            )
+
+        slate_keys_sample = [bs.isoformat() for bs, _ in bucket_slate[:2]]
+        logger.info(f"Histograma {range_key}: slate keys sample={slate_keys_sample}")
+
         # Indexamos los resultados por (bucket_iso, zona)
         data_map = {}
         for row in rows:
@@ -392,6 +407,10 @@ class StatisticsService:
                 "unique_devices": row.unique_devices,
                 "total_detections": row.total_detections,
             }
+
+        if data_map:
+            sample_keys = list(data_map.keys())[:3]
+            logger.info(f"Histograma {range_key}: data_map keys sample={sample_keys}")
 
         # Construimos la respuesta rellenando vacíos con ceros
         buckets_out = []
