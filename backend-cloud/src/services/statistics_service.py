@@ -307,7 +307,7 @@ class StatisticsService:
                 bs = start + timedelta(minutes=10 * i)
                 be = bs + timedelta(minutes=10)
                 buckets.append((bs, be))
- 
+
         elif range_key == "today":
             # Desde 00:00 hasta 24:00 de hoy: 8 bloques de 3h
             start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -370,7 +370,6 @@ class StatisticsService:
             )
             result = await db.execute(query)
             rows = result.all()
-
 
             # Mapear resultados por zona
             by_zone = {"near": 0, "medium": 0, "far": 0}

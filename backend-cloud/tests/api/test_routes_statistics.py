@@ -111,16 +111,13 @@ class TestStatisticsRoutes:
             new_callable=AsyncMock,
         ) as mock_service:
             # Simulamos una respuesta válida del servicio
-            mock_service.return_value = {
-                "range": "hour",
-                "buckets": []
-            }
+            mock_service.return_value = {"range": "hour", "buckets": []}
 
             response = client.get("/api/v1/statistics/histogram")
 
             assert response.status_code == 200
             assert response.json()["range"] == "hour"
-            
+
             # Verificamos que el servicio fue llamado con los argumentos correctos
             # args[1] es 'range' (por defecto 'hour'), args[2] es 'device_id' (None)
             mock_service.assert_called_once()
@@ -150,7 +147,7 @@ class TestStatisticsRoutes:
         """Valida que la validación de FastAPI (regex) rechace rangos no permitidos."""
         # 'month' no está en el regex ^(hour|today|week)$ definido en el Query
         response = client.get("/api/v1/statistics/histogram?range=month")
-        
+
         # FastAPI devuelve 422 Unprocessable Entity cuando falla la validación de parámetros
         assert response.status_code == 422
         # Opcionalmente verificar que el error mencione el campo 'range'

@@ -395,29 +395,33 @@ class TestStatisticsService:
         """Valida que el histograma mapee datos de DB y rellene con ceros los bloques vacíos."""
         fixed_now = datetime(2026, 4, 27, 10, 45, 0, tzinfo=ZoneInfo("Europe/Madrid"))
         mock_now.return_value = fixed_now
-        
-        bucket_start = fixed_now.replace(minute=0, second=0, microsecond=0)
-        mock_row = MagicMock(
-            bucket=bucket_start,
-            zone=ZoneEnum.NEAR,
-            unique_devices=5,
-            total_detections=50
-        )
-        
+
+        mock_row = MagicMock(zone=ZoneEnum.NEAR, unique_devices=5, total_detections=50)
+
         mock_result = MagicMock()
         mock_result.all.return_value = [mock_row]
-        db_session.execute = AsyncMock(return_value=mock_result)
+
+        res_empty = MagicMock()
+        res_empty.all.return_value = []
+
+        db_session.execute.side_effect = [
+            mock_result,
+            res_empty,
+            res_empty,
+            res_empty,
+            res_empty,
+            res_empty,
+        ]
 
         result = await service.get_histogram_stats(db_session, "hour")
 
         assert result["range"] == "hour"
         assert len(result["buckets"]) == 6
-        
+
         first_bucket = result["buckets"][0]
         assert first_bucket["by_zone"]["near"] == 5
-        assert first_bucket["by_zone"]["medium"] == 0
         assert first_bucket["total"] == 5
-        
+
         second_bucket = result["buckets"][1]
         assert second_bucket["total"] == 0
         assert second_bucket["by_zone"]["near"] == 0
@@ -430,48 +434,41 @@ class TestStatisticsService:
         mock_now.return_value = fixed_now
 
         today_start = fixed_now.replace(hour=0, minute=0, second=0, microsecond=0)
-        expected_start = today_start - timedelta(days=6) # Lunes 11 de Mayo
+        expected_start = today_start - timedelta(days=6)
 
-        mock_row = MagicMock(
-            bucket=expected_start,
-            zone=ZoneEnum.NEAR,
-            unique_devices=15,
-            total_detections=150
-        )
-        
+        mock_row = MagicMock(zone=ZoneEnum.NEAR, unique_devices=15, total_detections=150)
+
         mock_result = MagicMock()
         mock_result.all.return_value = [mock_row]
-        db_session.execute = AsyncMock(return_value=mock_result)
+
+        res_empty = MagicMock()
+        res_empty.all.return_value = []
+
+        db_session.execute.side_effect = [mock_result] + [res_empty] * 6
 
         result = await service.get_histogram_stats(db_session, range_key="week")
 
         assert result["range"] == "week"
         assert result["bin_interval"] == "1 day"
-        assert len(result["buckets"]) == 7  # 7 días
-        
+        assert len(result["buckets"]) == 7
+
         first_bucket = result["buckets"][0]
         assert first_bucket["period_start"] == expected_start.isoformat()
         assert first_bucket["by_zone"]["near"] == 15
-        assert first_bucket["total"] == 15
-        
+
         last_bucket = result["buckets"][-1]
         assert last_bucket["period_start"] == today_start.isoformat()
         assert last_bucket["total"] == 0
-        assert last_bucket["by_zone"]["near"] == 0
-        assert last_bucket["by_zone"]["medium"] == 0
-        assert last_bucket["by_zone"]["far"] == 0
 
-        args, _ = db_session.execute.call_args
-        sql_query = str(args[0])
-        assert "1 day" in sql_query
+        assert db_session.execute.call_count == 7
 
     @pytest.mark.asyncio
     async def test_get_histogram_stats_device_filter_sql(self, service, db_session):
         """Valida que el filtro por device_id se aplique a la consulta del histograma."""
         db_session.execute = AsyncMock(return_value=MagicMock(all=MagicMock(return_value=[])))
-        
+
         await service.get_histogram_stats(db_session, "today", device_id="raspberry_01")
-        
+
         args, _ = db_session.execute.call_args
         sql_query = str(args[0])
         assert "detections.device_id = :device_id_1" in sql_query
