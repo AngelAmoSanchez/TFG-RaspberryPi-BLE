@@ -102,3 +102,56 @@ class TestStatisticsRoutes:
             diff = end_dt - start_dt
             assert diff.days == 10
             mock_service.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_histogram_stats_success_default(self, client):
+        """Valida la obtención exitosa del histograma con el rango por defecto ('hour')."""
+        with patch(
+            "src.api.routes.statistics.StatisticsService.get_histogram_stats",
+            new_callable=AsyncMock,
+        ) as mock_service:
+            # Simulamos una respuesta válida del servicio
+            mock_service.return_value = {
+                "range": "hour",
+                "buckets": []
+            }
+
+            response = client.get("/api/v1/statistics/histogram")
+
+            assert response.status_code == 200
+            assert response.json()["range"] == "hour"
+            
+            # Verificamos que el servicio fue llamado con los argumentos correctos
+            # args[1] es 'range' (por defecto 'hour'), args[2] es 'device_id' (None)
+            mock_service.assert_called_once()
+            args, _ = mock_service.call_args
+            assert args[1] == "hour"
+            assert args[2] is None
+
+    @pytest.mark.asyncio
+    async def test_get_histogram_stats_with_params(self, client):
+        """Valida el histograma pasando un rango específico y filtro por dispositivo."""
+        with patch(
+            "src.api.routes.statistics.StatisticsService.get_histogram_stats",
+            new_callable=AsyncMock,
+        ) as mock_service:
+            mock_service.return_value = {"range": "today", "buckets": []}
+
+            response = client.get("/api/v1/statistics/histogram?range=today&device_id=iot_01")
+
+            assert response.status_code == 200
+            mock_service.assert_called_once()
+            args, _ = mock_service.call_args
+            assert args[1] == "today"
+            assert args[2] == "iot_01"
+
+    @pytest.mark.asyncio
+    async def test_get_histogram_stats_invalid_range(self, client):
+        """Valida que la validación de FastAPI (regex) rechace rangos no permitidos."""
+        # 'month' no está en el regex ^(hour|today|week)$ definido en el Query
+        response = client.get("/api/v1/statistics/histogram?range=month")
+        
+        # FastAPI devuelve 422 Unprocessable Entity cuando falla la validación de parámetros
+        assert response.status_code == 422
+        # Opcionalmente verificar que el error mencione el campo 'range'
+        assert "range" in response.json()["detail"][0]["loc"]

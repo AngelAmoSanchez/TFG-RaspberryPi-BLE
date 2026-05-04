@@ -15,9 +15,9 @@ router = APIRouter(prefix="/statistics", tags=["statistics"])
 
 @router.get("/realtime")
 async def get_realtime_stats(
-    minutes: int = Query(5, ge=1, le=10080),
+    minutes: int = Query(5, ge=1, le=525600),
     device_id: Optional[str] = Query(None, description="Filtrar por dispositivo"),
-    db: AsyncSession = Depends(get_db),  # Hasta 7 días (máximo del seleccionador predeterminado)
+    db: AsyncSession = Depends(get_db),  # Hasta 1 año (máximo del seleccionador predeterminado)
 ):
     """Devuelve estadísticas en tiempo real para los últimos N minutos"""
     service = StatisticsService()
@@ -114,3 +114,24 @@ async def get_zone_distribution(hours: int = Query(24), db: AsyncSession = Depen
     distribution = await service.get_zone_distribution(db, start_time, end_time)
 
     return {"start_time": start_time.isoformat(), "end_time": end_time.isoformat(), **distribution}
+
+
+@router.get("/histogram")
+async def get_histogram_stats(
+    range: str = Query(
+        "hour",
+        regex="^(hour|today|week)$",
+        description="Opciones del histograma: hour (cada 10min), today (cada 3h), week (por día)",
+    ),
+    device_id: Optional[str] = Query(None, description="Filtrar por dispositivo"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Devuelve un histograma de detecciones agrupadas por bloques de tiempo y subdivididas por zona.
+
+    - range='hour'  - En la hora actual de reloj, 6 bloques de 10 minutos
+    - range='today' - De 00:00 a 24:00 del día de hoy, 8 bloques de 3 horas
+    - range='week'  - Últimos 7 días terminando hoy, 1 bloque por día
+    """
+    service = StatisticsService()
+    stats = await service.get_histogram_stats(db, range, device_id)
+    return stats

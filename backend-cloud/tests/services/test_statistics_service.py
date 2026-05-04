@@ -1,10 +1,12 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 
 from src.database.models import AggregatedStats, ZoneEnum
 from src.services.statistics_service import StatisticsService
+from src.utils import timezone_utils
 
 pytestmark = pytest.mark.unit
 
@@ -355,3 +357,127 @@ class TestStatisticsService:
             end_dt = args[2]
             diff = end_dt - start_dt
             assert diff.total_seconds() / 3600 == pytest.approx(12, 0.01)
+
+    @patch("src.services.statistics_service.timezone_utils.now")
+    def test_compute_histogram_window_logic(self, mock_now, service):
+        """Valida el cálculo de ventanas y bloques de tiempo para histogramas."""
+        # Fijamos la hora: Lunes 2026-04-27 10:45:00
+        fixed_now = datetime(2026, 4, 27, 10, 45, 0, tzinfo=ZoneInfo("Europe/Madrid"))
+        mock_now.return_value = fixed_now
+
+        # Caso 1: Hour (6 bloques de 10 min de la hora actual)
+        start, end, buckets = service._compute_histogram_window("hour")
+        assert start.hour == 10 and start.minute == 0
+        assert end.hour == 11 and end.minute == 0
+        assert len(buckets) == 6
+        assert buckets[0][0].minute == 0
+        assert buckets[-1][1].minute == 0  # 11:00
+
+        # Caso 2: Today (8 bloques de 3h de hoy)
+        start, end, buckets = service._compute_histogram_window("today")
+        assert start.hour == 0 and start.day == 27
+        assert end.hour == 0 and end.day == 28
+        assert len(buckets) == 8
+        assert (buckets[1][0] - buckets[0][0]).total_seconds() / 3600 == 3.0
+
+        # Caso 3: Week (7 bloques de 1 día terminando hoy)
+        start, end, buckets = service._compute_histogram_window("week")
+        assert start.day == 21  # 27 - 6 días
+        assert end.day == 28
+        assert len(buckets) == 7
+
+        with pytest.raises(ValueError, match="Rango range_key desconocido"):
+            service._compute_histogram_window("month")
+
+    @pytest.mark.asyncio
+    @patch("src.services.statistics_service.timezone_utils.now")
+    async def test_get_histogram_stats_full_mapping(self, mock_now, service, db_session):
+        """Valida que el histograma mapee datos de DB y rellene con ceros los bloques vacíos."""
+        fixed_now = datetime(2026, 4, 27, 10, 45, 0, tzinfo=ZoneInfo("Europe/Madrid"))
+        mock_now.return_value = fixed_now
+        
+        bucket_start = fixed_now.replace(minute=0, second=0, microsecond=0)
+        mock_row = MagicMock(
+            bucket=bucket_start,
+            zone=ZoneEnum.NEAR,
+            unique_devices=5,
+            total_detections=50
+        )
+        
+        mock_result = MagicMock()
+        mock_result.all.return_value = [mock_row]
+        db_session.execute = AsyncMock(return_value=mock_result)
+
+        result = await service.get_histogram_stats(db_session, "hour")
+
+        assert result["range"] == "hour"
+        assert len(result["buckets"]) == 6
+        
+        first_bucket = result["buckets"][0]
+        assert first_bucket["by_zone"]["near"] == 5
+        assert first_bucket["by_zone"]["medium"] == 0
+        assert first_bucket["total"] == 5
+        
+        second_bucket = result["buckets"][1]
+        assert second_bucket["total"] == 0
+        assert second_bucket["by_zone"]["near"] == 0
+
+    @pytest.mark.asyncio
+    @patch("src.services.statistics_service.timezone_utils.now")
+    async def test_get_histogram_stats_week_success(self, mock_now, service, db_session):
+        """Valida la casuística de range_key='week'"""
+        fixed_now = datetime(2026, 5, 17, 10, 0, 0, tzinfo=timezone_utils.SPAIN_TZ)
+        mock_now.return_value = fixed_now
+
+        today_start = fixed_now.replace(hour=0, minute=0, second=0, microsecond=0)
+        expected_start = today_start - timedelta(days=6) # Lunes 11 de Mayo
+
+        mock_row = MagicMock(
+            bucket=expected_start,
+            zone=ZoneEnum.NEAR,
+            unique_devices=15,
+            total_detections=150
+        )
+        
+        mock_result = MagicMock()
+        mock_result.all.return_value = [mock_row]
+        db_session.execute = AsyncMock(return_value=mock_result)
+
+        result = await service.get_histogram_stats(db_session, range_key="week")
+
+        assert result["range"] == "week"
+        assert result["bin_interval"] == "1 day"
+        assert len(result["buckets"]) == 7  # 7 días
+        
+        first_bucket = result["buckets"][0]
+        assert first_bucket["period_start"] == expected_start.isoformat()
+        assert first_bucket["by_zone"]["near"] == 15
+        assert first_bucket["total"] == 15
+        
+        last_bucket = result["buckets"][-1]
+        assert last_bucket["period_start"] == today_start.isoformat()
+        assert last_bucket["total"] == 0
+        assert last_bucket["by_zone"]["near"] == 0
+        assert last_bucket["by_zone"]["medium"] == 0
+        assert last_bucket["by_zone"]["far"] == 0
+
+        args, _ = db_session.execute.call_args
+        sql_query = str(args[0])
+        assert "1 day" in sql_query
+
+    @pytest.mark.asyncio
+    async def test_get_histogram_stats_device_filter_sql(self, service, db_session):
+        """Valida que el filtro por device_id se aplique a la consulta del histograma."""
+        db_session.execute = AsyncMock(return_value=MagicMock(all=MagicMock(return_value=[])))
+        
+        await service.get_histogram_stats(db_session, "today", device_id="raspberry_01")
+        
+        args, _ = db_session.execute.call_args
+        sql_query = str(args[0])
+        assert "detections.device_id = :device_id_1" in sql_query
+
+    @pytest.mark.asyncio
+    async def test_get_histogram_stats_invalid_key_error(self, service, db_session):
+        """Valida que se lance ValueError ante un range_key inválido en el servicio."""
+        with pytest.raises(ValueError):
+            await service.get_histogram_stats(db_session, "invalid_range")

@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, literal_column, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
@@ -287,6 +287,145 @@ class StatisticsService:
                 "total_detections": total_detections,
                 "estimated_people": self.estimate_people(total_unique),
             },
+        }
+
+    def _compute_histogram_window(self, range_key: str):
+        """Calcula la lista completa de bloques de tiempo (vacíos incluidos) para un rango de tiempo.
+
+        Devuelve:
+            (start, end, buckets) donde buckets (bloques de tiempo) es una lista de tuplas
+            (period_start, period_end) ordenadas cronológicamente.
+        """
+        now = timezone_utils.now()
+        buckets = []
+
+        if range_key == "hour":
+            # Hora actual de reloj: 6 bloques de 10 min
+            start = now.replace(minute=0, second=0, microsecond=0)
+            end = start + timedelta(hours=1)
+            for i in range(6):
+                bs = start + timedelta(minutes=10 * i)
+                be = bs + timedelta(minutes=10)
+                buckets.append((bs, be))
+
+        elif range_key == "today":
+            # Desde 00:00 hasta 24:00 de hoy: 8 bloques de 3h
+            start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end = start + timedelta(days=1)
+            for i in range(8):
+                bs = start + timedelta(hours=3 * i)
+                be = bs + timedelta(hours=3)
+                buckets.append((bs, be))
+
+        elif range_key == "week":
+            # Últimos 7 días terminando hoy: 1 bloque = 1 día
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            start = today_start - timedelta(days=6)
+            end = today_start + timedelta(days=1)
+            for i in range(7):
+                bs = start + timedelta(days=i)
+                be = bs + timedelta(days=1)
+                buckets.append((bs, be))
+
+        else:
+            raise ValueError(f"ERROR - Rango range_key desconocido: {range_key}")
+
+        return start, end, buckets
+
+    async def get_histogram_stats(
+        self, db: AsyncSession, range_key: str, device_id: str = None
+    ) -> Dict:
+        """Obtiene un histograma de dispositivos únicos agrupados por bloques de tiempo y subdivididos por zona.
+
+        Args:
+            range_key: 'hour' | 'today' | 'week'
+            device_id: Opcional filtrar por dispositivo"""
+        start, end, bucket_slate = self._compute_histogram_window(range_key)
+
+        # Tamaño del bucket en función del rango
+        if range_key == "hour":
+            bin_interval = "10 minutes"
+        elif range_key == "today":
+            bin_interval = "3 hours"
+        elif range_key == "week":
+            bin_interval = "1 day"
+        else:
+            raise ValueError(f"range_key desconocido: {range_key}")
+
+        # Convertimos timestamp a hora local
+        local_ts = func.timezone("Europe/Madrid", Detection.timestamp)
+
+        bucket_expr = func.date_bin(
+            literal_column(f"interval '{bin_interval}'"),
+            local_ts,
+            literal_column("timestamp '2000-01-01 00:00:00'"),
+        ).label("bucket")
+
+        conditions = [Detection.timestamp >= start, Detection.timestamp < end]
+        if device_id:
+            conditions.append(Detection.device_id == device_id)
+
+        query = (
+            select(
+                bucket_expr,
+                Detection.zone,
+                func.count(func.distinct(Detection.device_hash)).label("unique_devices"),
+                func.count(Detection.id).label("total_detections"),
+            )
+            .where(and_(*conditions))
+            .group_by("bucket", Detection.zone)
+            .order_by("bucket", Detection.zone)
+        )
+
+        result = await db.execute(query)
+        rows = result.all()
+
+        # Indexamos los resultados por (bucket_iso, zona)
+        data_map = {}
+        for row in rows:
+            naive = row.bucket
+            aware = naive.replace(tzinfo=timezone_utils.SPAIN_TZ) if naive.tzinfo is None else naive
+            zone_raw = row.zone.value if isinstance(row.zone, ZoneEnum) else row.zone
+            zone = zone_raw.lower()  # Usa minúsculas: "near", "medium", "far"
+            key = (aware.isoformat(), zone)
+            data_map[key] = {
+                "unique_devices": row.unique_devices,
+                "total_detections": row.total_detections,
+            }
+
+        # Construimos la respuesta rellenando vacíos con ceros
+        buckets_out = []
+        for bs, be in bucket_slate:
+            by_zone = {}
+            for zone_name in ("near", "medium", "far"):
+                key = (bs.isoformat(), zone_name)
+                entry = data_map.get(key)
+                if entry:
+                    by_zone[zone_name] = entry["unique_devices"]
+                else:
+                    by_zone[zone_name] = 0
+            total = sum(by_zone.values())
+            buckets_out.append(
+                {
+                    "period_start": bs.isoformat(),
+                    "period_end": be.isoformat(),
+                    "by_zone": by_zone,
+                    "total": total,
+                }
+            )
+
+        logger.info(
+            f"Histograma {range_key}: {len(buckets_out)} buckets, "
+            f"{sum(b['total'] for b in buckets_out)} dispositivos totales"
+        )
+
+        return {
+            "timestamp": timezone_utils.now().isoformat(),
+            "range": range_key,
+            "bin_interval": bin_interval,
+            "start_time": start.isoformat(),
+            "end_time": end.isoformat(),
+            "buckets": buckets_out,
         }
 
     async def save_aggregated_stats(
