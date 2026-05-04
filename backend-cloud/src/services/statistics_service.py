@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List
 
-from sqlalchemy import and_, func, literal_column, select
+from sqlalchemy import and_, func, literal_column, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
