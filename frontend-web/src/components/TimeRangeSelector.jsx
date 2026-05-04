@@ -1,30 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Clock, Calendar, ChevronDown } from 'lucide-react';
+import { TIME_PRESETS, DEFAULT_PRESET_KEY, getPresetByKey, getPresetByMinutes } from './timePresets';
 
-const TimeRangeSelector = ({ onTimeRangeChange, currentValue = 5 }) => {
-  const [mode, setMode] = useState('preset'); // 'preset' or 'custom'
+const TimeRangeSelector = ({ onTimeRangeChange, currentPresetKey, currentValue = 5 }) => {
+
+  const resolvedKey =
+    currentPresetKey ||
+    getPresetByMinutes(currentValue)?.key ||
+    DEFAULT_PRESET_KEY;
+
+  const [mode, setMode] = useState('preset'); // 'preset' o 'custom'
   const [showDropdown, setShowDropdown] = useState(false);
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
 
-  const presetOptions = [
-    { value: 1, unit: 'minutes', label: '1 minuto' },
-    { value: 5, unit: 'minutes', label: '5 minutos' },
-    { value: 30, unit: 'minutes', label: '30 minutos' },
-    { value: 60, unit: 'minutes', label: '1 hora' },
-    { value: 720, unit: 'minutes', label: '12 horas' },
-    { value: 1440, unit: 'minutes', label: '1 día' },
-    { value: 10080, unit: 'minutes', label: '7 días' },
-  ];
-
-  const [selectedPreset, setSelectedPreset] = useState(currentValue);
+  // Sincroniza el modo si el se cambia entre preset/custom en el dashboard
+  useEffect(() => {
+    if (currentPresetKey) setMode('preset');
+  }, [currentPresetKey]);
 
   const formatDateForDisplay = (datetimeStr) => {
     if (!datetimeStr) return '';
     const date = new Date(datetimeStr);
-    return date.toLocaleString('es-ES', { 
-      year: 'numeric', 
-      month: '2-digit', 
+    return date.toLocaleString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit'
@@ -35,27 +35,32 @@ const TimeRangeSelector = ({ onTimeRangeChange, currentValue = 5 }) => {
     if (mode === 'custom' && customStart && customEnd) {
       return `${formatDateForDisplay(customStart)} - ${formatDateForDisplay(customEnd)}`;
     }
-    const preset = presetOptions.find(p => p.value === selectedPreset);
-    return preset ? preset.label : `Últimos ${selectedPreset} min`;
+    const preset = getPresetByKey(resolvedKey);
+    return preset ? preset.label : 'Últimos 5 minutos';
   };
 
-  const handlePresetChange = (value) => {
-    setSelectedPreset(value);
+  const handlePresetChange = (preset) => {
     setMode('preset');
     setShowDropdown(false);
-    onTimeRangeChange({ mode: 'preset', value });
+
+    // Payload de cambio entre presets
+    const payload = { mode: 'preset', presetKey: preset.key };
+    if (preset.kind === 'rolling-minutes') {
+      payload.value = preset.minutes;
+    }
+    onTimeRangeChange(payload);
   };
 
   const handleCustomApply = () => {
     if (customStart && customEnd) {
       setMode('custom');
       setShowDropdown(false);
-      
+
       const startDate = customStart.split('T')[0];
       const endDate = customEnd.split('T')[0];
-      
-      onTimeRangeChange({ 
-        mode: 'custom', 
+
+      onTimeRangeChange({
+        mode: 'custom',
         startDate,
         endDate,
         startDateTime: customStart,
@@ -67,7 +72,12 @@ const TimeRangeSelector = ({ onTimeRangeChange, currentValue = 5 }) => {
   const handleModeSwitch = (newMode) => {
     setMode(newMode);
     if (newMode === 'preset') {
-      onTimeRangeChange({ mode: 'preset', value: selectedPreset });
+      const preset = getPresetByKey(resolvedKey);
+      if (preset) {
+        const payload = { mode: 'preset', presetKey: preset.key };
+        if (preset.kind === 'rolling-minutes') payload.value = preset.minutes;
+        onTimeRangeChange(payload);
+      }
     }
   };
 
@@ -86,34 +96,32 @@ const TimeRangeSelector = ({ onTimeRangeChange, currentValue = 5 }) => {
 
       {showDropdown && (
         <>
-          <div 
-            className="fixed inset-0 z-10" 
+          <div
+            className="fixed inset-0 z-10"
             onClick={() => setShowDropdown(false)}
           />
-          
+
           <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
             <div className="flex border-b border-gray-200">
               <button
                 onClick={() => handleModeSwitch('preset')}
-                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                  mode === 'preset'
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${mode === 'preset'
                     ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 <div className="flex items-center justify-center gap-2">
                   <Clock className="w-4 h-4" />
                   Predeterminado
                 </div>
               </button>
-              
+
               <button
                 onClick={() => handleModeSwitch('custom')}
-                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                  mode === 'custom'
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${mode === 'custom'
                     ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 <div className="flex items-center justify-center gap-2">
                   <Calendar className="w-4 h-4" />
@@ -124,15 +132,14 @@ const TimeRangeSelector = ({ onTimeRangeChange, currentValue = 5 }) => {
 
             {mode === 'preset' && (
               <div className="p-2 max-h-80 overflow-y-auto">
-                {presetOptions.map((option) => (
+                {TIME_PRESETS.map((option) => (
                   <button
-                    key={option.value}
-                    onClick={() => handlePresetChange(option.value)}
-                    className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${
-                      selectedPreset === option.value
+                    key={option.key}
+                    onClick={() => handlePresetChange(option)}
+                    className={`w-full text-left px-4 py-2.5 rounded-md text-sm transition-colors ${resolvedKey === option.key
                         ? 'bg-blue-50 text-blue-700 font-medium'
                         : 'text-gray-700 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     {option.label}
                   </button>
@@ -154,7 +161,7 @@ const TimeRangeSelector = ({ onTimeRangeChange, currentValue = 5 }) => {
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
                     Fecha y Hora de Fin
