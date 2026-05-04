@@ -307,7 +307,7 @@ class StatisticsService:
                 bs = start + timedelta(minutes=10 * i)
                 be = bs + timedelta(minutes=10)
                 buckets.append((bs, be))
-
+ 
         elif range_key == "today":
             # Desde 00:00 hasta 24:00 de hoy: 8 bloques de 3h
             start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -351,33 +351,36 @@ class StatisticsService:
             bin_interval = "1 day"
         else:
             raise ValueError(f"range_key desconocido: {range_key}")
-
-        # Convertimos timestamp a hora local
-        local_ts = func.timezone("Europe/Madrid", Detection.timestamp)
-
-        bucket_expr = func.date_bin(
-            literal_column(f"interval '{bin_interval}'"),
-            local_ts,
-            literal_column("timestamp '2000-01-01 00:00:00'"),
-        ).label("bucket")
-
-        conditions = [Detection.timestamp >= start, Detection.timestamp < end]
-        if device_id:
-            conditions.append(Detection.device_id == device_id)
-
-        query = (
-            select(
-                bucket_expr,
-                Detection.zone,
-                func.count(func.distinct(Detection.device_hash)).label("unique_devices"),
-                func.count(Detection.id).label("total_detections"),
+ 
+        # Cada sub-select cuenta dispositivos y detecciones para un bucket
+        params = {}
+        parts = []
+        for i, (bs, be) in enumerate(bucket_slate):
+            p_start = f"bs_{i}"
+            p_end = f"be_{i}"
+            p_label = f"bl_{i}"
+            params[p_start] = bs
+            params[p_end] = be
+            params[p_label] = bs.isoformat()
+ 
+            device_filter = ""
+            if device_id:
+                p_dev = f"dev_{i}"
+                params[p_dev] = device_id
+                device_filter = f" AND device_id = :{p_dev}"
+ 
+            parts.append(
+                f"SELECT :{p_label} AS bucket_label, zone, "
+                f"COUNT(DISTINCT device_hash) AS unique_devices, "
+                f"COUNT(id) AS total_detections "
+                f"FROM detections "
+                f"WHERE timestamp >= :{p_start} AND timestamp < :{p_end}"
+                f"{device_filter} "
+                f"GROUP BY zone"
             )
-            .where(and_(*conditions))
-            .group_by("bucket", Detection.zone)
-            .order_by("bucket", Detection.zone)
-        )
-
-        result = await db.execute(query)
+ 
+        union_sql = " UNION ALL ".join(parts)
+        result = await db.execute(text(union_sql), params)
         rows = result.all()
  
         if rows:
@@ -398,14 +401,10 @@ class StatisticsService:
         # Indexamos los resultados por (bucket_iso, zona)
         data_map = {}
         for row in rows:
-            bucket = row.bucket
-            if bucket.tzinfo is None:
-                aware = bucket.replace(tzinfo=timezone_utils.SPAIN_TZ)
-            else:
-                aware = bucket.astimezone(timezone_utils.SPAIN_TZ)
-            zone_raw = row.zone.value if isinstance(row.zone, ZoneEnum) else row.zone
-            zone = zone_raw.lower()  # Usa minúsculas: "near", "medium", "far"
-            key = (aware.isoformat(), zone)
+            bucket_label = row.bucket_label
+            zone_raw = row.zone
+            zone = zone_raw.lower() if isinstance(zone_raw, str) else zone_raw.value.lower()
+            key = (bucket_label, zone)
             data_map[key] = {
                 "unique_devices": row.unique_devices,
                 "total_detections": row.total_detections,
