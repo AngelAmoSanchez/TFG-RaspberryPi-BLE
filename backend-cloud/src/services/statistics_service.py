@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List
 
-from sqlalchemy import and_, func, literal_column, select, text
+from sqlalchemy import and_, func, literal_column, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
@@ -351,81 +351,37 @@ class StatisticsService:
             bin_interval = "1 day"
         else:
             raise ValueError(f"range_key desconocido: {range_key}")
- 
-        # Cada sub-select cuenta dispositivos y detecciones para un bucket
-        params = {}
-        parts = []
-        for i, (bs, be) in enumerate(bucket_slate):
-            p_start = f"bs_{i}"
-            p_end = f"be_{i}"
-            p_label = f"bl_{i}"
-            params[p_start] = bs
-            params[p_end] = be
-            params[p_label] = bs.isoformat()
- 
-            device_filter = ""
-            if device_id:
-                p_dev = f"dev_{i}"
-                params[p_dev] = device_id
-                device_filter = f" AND device_id = :{p_dev}"
- 
-            parts.append(
-                f"SELECT :{p_label} AS bucket_label, zone, "
-                f"COUNT(DISTINCT device_hash) AS unique_devices, "
-                f"COUNT(id) AS total_detections "
-                f"FROM detections "
-                f"WHERE timestamp >= :{p_start} AND timestamp < :{p_end}"
-                f"{device_filter} "
-                f"GROUP BY zone"
-            )
- 
-        union_sql = " UNION ALL ".join(parts)
-        result = await db.execute(text(union_sql), params)
-        rows = result.all()
- 
-        if rows:
-            logger.info(
-                f"Histograma {range_key}: SQL devolvió {len(rows)} filas. "
-                f"Primer bucket raw: {rows[0].bucket!r} (type={type(rows[0].bucket).__name__}), "
-                f"zone={rows[0].zone!r}"
-            )
-        else:
-            logger.info(
-                f"Histograma {range_key}: SQL devolvió 0 filas. "
-                f"WHERE: start={start.isoformat()}, end={end.isoformat()}"
-            )
 
-        slate_keys_sample = [bs.isoformat() for bs, _ in bucket_slate[:2]]
-        logger.info(f"Histograma {range_key}: slate keys sample={slate_keys_sample}")
-
-        # Indexamos los resultados por (bucket_iso, zona)
-        data_map = {}
-        for row in rows:
-            bucket_label = row.bucket_label
-            zone_raw = row.zone
-            zone = zone_raw.lower() if isinstance(zone_raw, str) else zone_raw.value.lower()
-            key = (bucket_label, zone)
-            data_map[key] = {
-                "unique_devices": row.unique_devices,
-                "total_detections": row.total_detections,
-            }
- 
-        if data_map:
-            sample_keys = list(data_map.keys())[:3]
-            logger.info(f"Histograma {range_key}: data_map keys sample={sample_keys}")
-
-        # Construimos la respuesta rellenando vacíos con ceros
         buckets_out = []
+        grand_total = 0
         for bs, be in bucket_slate:
-            by_zone = {}
-            for zone_name in ("near", "medium", "far"):
-                key = (bs.isoformat(), zone_name)
-                entry = data_map.get(key)
-                if entry:
-                    by_zone[zone_name] = entry["unique_devices"]
-                else:
-                    by_zone[zone_name] = 0
+            conditions = [Detection.timestamp >= bs, Detection.timestamp < be]
+            if device_id:
+                conditions.append(Detection.device_id == device_id)
+
+            query = (
+                select(
+                    Detection.zone,
+                    func.count(func.distinct(Detection.device_hash)).label("unique_devices"),
+                    func.count(Detection.id).label("total_detections"),
+                )
+                .where(and_(*conditions))
+                .group_by(Detection.zone)
+            )
+            result = await db.execute(query)
+            rows = result.all()
+
+
+            # Mapear resultados por zona
+            by_zone = {"near": 0, "medium": 0, "far": 0}
+            for row in rows:
+                zone_raw = row.zone.value if isinstance(row.zone, ZoneEnum) else row.zone
+                zone = zone_raw.lower()
+                if zone in by_zone:
+                    by_zone[zone] = row.unique_devices
+
             total = sum(by_zone.values())
+            grand_total += total
             buckets_out.append(
                 {
                     "period_start": bs.isoformat(),
@@ -437,7 +393,7 @@ class StatisticsService:
 
         logger.info(
             f"Histograma {range_key}: {len(buckets_out)} buckets, "
-            f"{sum(b['total'] for b in buckets_out)} dispositivos totales"
+            f"{grand_total} dispositivos totales"
         )
 
         return {
