@@ -152,4 +152,39 @@ describe('ApiService', () => {
       expect.objectContaining({ responseType: 'blob' })
     );
   });
+
+  test('getHistogramStats debe obtener el histograma con parámetros por defecto', async () => {
+    const mockData = { range: 'hour', buckets: [] };
+    service.client.get.mockResolvedValue({ data: mockData });
+
+    const result = await service.getHistogramStats();
+
+    expect(service.client.get).toHaveBeenCalledWith('/api/v1/statistics/histogram', {
+      params: { range: 'hour' }
+    });
+    expect(result).toEqual(mockData);
+  });
+
+  test('getHistogramStats debe incluir el device_id en los parámetros si se proporciona', async () => {
+    service.client.get.mockResolvedValue({ data: {} });
+
+    await service.getHistogramStats('today', 'raspberry-pi-01');
+
+    expect(service.client.get).toHaveBeenCalledWith('/api/v1/statistics/histogram', {
+      params: { 
+        range: 'today', 
+        device_id: 'raspberry-pi-01' 
+      }
+    });
+  });
+
+  test('getHistogramStats debe funcionar correctamente con el rango "week"', async () => {
+    service.client.get.mockResolvedValue({ data: {} });
+
+    await service.getHistogramStats('week');
+
+    expect(service.client.get).toHaveBeenCalledWith('/api/v1/statistics/histogram', {
+      params: { range: 'week' }
+    });
+  });
 });

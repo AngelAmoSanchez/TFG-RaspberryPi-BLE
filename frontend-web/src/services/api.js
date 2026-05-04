@@ -131,6 +131,23 @@ class ApiService {
     return response.data;
   }
 
+  /**
+   * Obtiene histograma de detecciones agrupadas por intervalos de tiempo y zona.
+   *
+   * @param {('hour'|'today'|'week')} range - rango y detalle del histograma:
+   *   'hour'  - hora actual de reloj, 6 barras de 10 minutos
+   *   'today' - de 00:00 a 24:00 de hoy, 8 barras de 3 horas
+   *   'week'  - últimos 7 días, 1 barra por día
+   * @param {string} deviceId - Filtrar por dispositivo (opcional)
+   */
+  async getHistogramStats(range = 'hour', deviceId = '') {
+    const params = { range };
+    if (deviceId) params.device_id = deviceId;
+
+    const response = await this.client.get('/api/v1/statistics/histogram', { params });
+    return response.data;
+  }
+
   // ============= DEVICES =============
 
   /**

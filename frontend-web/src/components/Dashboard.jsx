@@ -3,15 +3,17 @@ import { useRealtimeStats } from '../hooks/useRealtimeStats';
 import { useDevices } from '../hooks/useDevices';
 import StatsCard from './StatsCard';
 import ZoneChart from './ZoneChart';
+import HistogramChart from './HistogramChart';
 import DeviceList from './DeviceList';
 import ConnectionStatus from './ConnectionStatus';
 import ExportFilters from './ExportFilters';
 import ThresholdSettings from './ThresholdSettings';
 import TimeRangeSelector from './TimeRangeSelector';
-import { Activity, Users, Wifi, WifiOff, RefreshCw, Settings, Eye, EyeOff } from 'lucide-react';
+import { Activity, Users, Wifi, WifiOff, RefreshCw, Eye, EyeOff } from 'lucide-react';
+import { DEFAULT_PRESET_KEY, getPresetByKey, getPresetLabel } from './timePresets';
 
 const Dashboard = () => {
-  const [timeConfig, setTimeConfig] = useState({ mode: 'preset', value: 5 });
+  const [timeConfig, setTimeConfig] = useState({ mode: 'preset', presetKey: DEFAULT_PRESET_KEY, value: 5 });
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
 
   // Auto-refresh siempre activo en modo preset
@@ -25,7 +27,7 @@ const Dashboard = () => {
   const [showInactive, setShowInactive] = useState(true);  // mostrar todos por defecto en el apartado "Dispositivos IoT"
 
   // Filtrar solo dispositivos activos para el selector
-  const activeDevices = devices.filter(d => d.is_active);
+  const activeDevices = devices.filter((d) => d.is_active);
   const showDeviceSelector = activeDevices.length > 1; // Mostrar solo si hay más de uno
 
   // Auto-refresh cada 30 segundos en modo preset
@@ -45,7 +47,7 @@ const Dashboard = () => {
     setTimeConfig(newConfig);
   };
 
-  // Función para obtener la descripción del filtro de tiempo
+  // Etiqueta para la cabecera del dashboard
   const getTimeFilterLabel = () => {
     if (timeConfig.mode === 'custom' && timeConfig.startDateTime && timeConfig.endDateTime) {
       // Formatear fechas personalizadas
@@ -61,7 +63,13 @@ const Dashboard = () => {
       return `${formatDate(timeConfig.startDateTime)} - ${formatDate(timeConfig.endDateTime)}`;
     }
 
-    // Para modo preset
+    // Preset por key
+    if (timeConfig.presetKey) {
+      const label = getPresetLabel(timeConfig.presetKey);
+      if (label) return label;
+    }
+
+    // Fallback por minutos
     const minutes = timeConfig.value || 5;
     if (minutes === 1) return 'Último minuto';
     if (minutes === 5) return 'Últimos 5 minutos';
@@ -71,32 +79,41 @@ const Dashboard = () => {
     if (minutes === 1440) return 'Último día';
     if (minutes === 10080) return 'Últimos 7 días';
 
-    // Fallback para otros valores
-    if (minutes < 60) {
-      return `Últimos ${minutes} minutos`;
-    } else if (minutes < 1440) {
-      const hours = Math.floor(minutes / 60);
-      return `Últimas ${hours} hora${hours !== 1 ? 's' : ''}`;
-    } else {
-      const days = Math.floor(minutes / 1440);
-      return `Últimos ${days} día${days !== 1 ? 's' : ''}`;
-    }
+    if (minutes < 60) return `Últimos ${minutes} minutos`;
+    if (minutes < 1440) return `Últimas ${Math.floor(minutes / 60)} horas`;
+    return `Últimos ${Math.floor(minutes / 1440)} días`;
   };
 
+  // Descripción de la ventana de tiempo en el pie de página
   const getTimeWindowDescription = () => {
     if (timeConfig.mode === 'custom' && timeConfig.startDate && timeConfig.endDate) {
       return `Rango: ${timeConfig.startDate} - ${timeConfig.endDate}`;
     }
+
+    const preset = getPresetByKey(timeConfig.presetKey);
+    if (preset) {
+      if (preset.kind === 'today') return 'Ventana de tiempo: desde las 00:00 de hoy';
+      if (preset.kind === 'yesterday') return 'Ventana de tiempo: todo el día de ayer';
+      if (preset.kind === 'rolling-minutes') {
+        const minutes = preset.minutes;
+        if (minutes < 60) return `Ventana de tiempo: ${minutes} minuto${minutes !== 1 ? 's' : ''}`;
+        if (minutes < 1440) {
+          const hours = Math.floor(minutes / 60);
+          return `Ventana de tiempo: ${hours} hora${hours !== 1 ? 's' : ''}`;
+        }
+        const days = Math.floor(minutes / 1440);
+        return `Ventana de tiempo: ${days} día${days !== 1 ? 's' : ''}`;
+      }
+    }
+
     const minutes = timeConfig.value || 5;
-    if (minutes < 60) {
-      return `Ventana de tiempo: ${minutes} minuto${minutes !== 1 ? 's' : ''}`;
-    } else if (minutes < 1440) {
+    if (minutes < 60) return `Ventana de tiempo: ${minutes} minuto${minutes !== 1 ? 's' : ''}`;
+    if (minutes < 1440) {
       const hours = Math.floor(minutes / 60);
       return `Ventana de tiempo: ${hours} hora${hours !== 1 ? 's' : ''}`;
-    } else {
-      const days = Math.floor(minutes / 1440);
-      return `Ventana de tiempo: ${days} día${days !== 1 ? 's' : ''}`;
     }
+    const days = Math.floor(minutes / 1440);
+    return `Ventana de tiempo: ${days} día${days !== 1 ? 's' : ''}`;
   };
 
   if (loading) {
@@ -170,6 +187,7 @@ const Dashboard = () => {
 
             <TimeRangeSelector
               onTimeRangeChange={handleTimeRangeChange}
+              currentPresetKey={timeConfig.presetKey}
               currentValue={timeConfig.value}
             />
 
@@ -205,11 +223,13 @@ const Dashboard = () => {
 
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Distribución por Zonas</h2>
           <ZoneChart data={byZone} />
         </div>
+
+        <HistogramChart deviceId={selectedDeviceId} />
 
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Detalle por Zona</h2>
@@ -245,7 +265,7 @@ const Dashboard = () => {
         <div className="lg:col-span-2 bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">
-              Dispositivos IoT ({showInactive ? devices.length : devices.filter(d => d.is_active).length})
+              Dispositivos IoT ({showInactive ? devices.length : devices.filter((d) => d.is_active).length})
             </h2>
 
             <button
@@ -267,7 +287,7 @@ const Dashboard = () => {
           </div>
 
           <DeviceList
-            devices={showInactive ? devices : devices.filter(d => d.is_active)}
+            devices={showInactive ? devices : devices.filter((d) => d.is_active)}
             loading={devicesLoading}
           />
         </div>
@@ -279,7 +299,8 @@ const Dashboard = () => {
 
       <div className="mt-8 text-center text-sm text-gray-500">
         <p>
-          Última actualización: {stats?.timestamp ? new Date(stats.timestamp).toLocaleTimeString('es-ES') : 'N/A'}
+          Última actualización:{' '}
+          {stats?.timestamp ? new Date(stats.timestamp).toLocaleTimeString('es-ES') : 'N/A'}
         </p>
         <p className="mt-1">
           {getTimeWindowDescription()}

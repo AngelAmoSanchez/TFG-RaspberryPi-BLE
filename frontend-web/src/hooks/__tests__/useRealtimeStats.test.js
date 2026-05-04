@@ -3,6 +3,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { useRealtimeStats } from '../useRealtimeStats';
 import apiService from '../../services/api';
 import websocketService from '../../services/websocket';
+import { resolvePresetRequest } from '../../components/timePresets';
 
 // Mock de servicios
 vi.mock('../../services/api', () => ({
@@ -18,6 +19,10 @@ vi.mock('../../services/websocket', () => ({
     on: vi.fn(),
     off: vi.fn(),
   },
+}));
+
+vi.mock('../../components/timePresets', () => ({
+  resolvePresetRequest: vi.fn(),
 }));
 
 describe('useRealtimeStats Hook', () => {
@@ -136,16 +141,13 @@ describe('useRealtimeStats Hook', () => {
   test('debe actualizar el estado wsConnected cuando cambia el estatus del WebSocket', () => {
     const { result } = renderHook(() => useRealtimeStats({ mode: 'preset', value: 5 }, true));
 
-    // Callback de 'connection_status' registrado
     const connectionCallback = websocketService.on.mock.calls.find(call => call[0] === 'connection_status')[1];
 
-    // Cambia a conectado
     act(() => {
       connectionCallback({ connected: true });
     });
     expect(result.current.wsConnected).toBe(true);
 
-    // Cambia a desconectado
     act(() => {
       connectionCallback({ connected: false });
     });
@@ -157,15 +159,77 @@ describe('useRealtimeStats Hook', () => {
     
     renderHook(() => useRealtimeStats({ mode: 'preset', value: 5 }, true));
 
-    // Espera la carga inicial
     await waitFor(() => expect(apiService.getRealtimeStats).toHaveBeenCalledTimes(1));
 
-    // Callback de 'detection_event'
     const detectionCallback = websocketService.on.mock.calls.find(call => call[0] === 'detection_event')[1];
 
-    // Evento de detección
     await act(async () => {
       detectionCallback();
+    });
+
+    expect(apiService.getRealtimeStats).toHaveBeenCalledTimes(2);
+  });
+
+  test('debe usar getRealtimeStats(5) si el presetKey es desconocido', async () => {
+    resolvePresetRequest.mockReturnValue(null);
+    apiService.getRealtimeStats.mockResolvedValue(mockStats);
+
+    const config = { mode: 'preset', presetKey: 'unknown-key' };
+    renderHook(() => useRealtimeStats(config, false));
+
+    await waitFor(() => {
+      expect(apiService.getRealtimeStats).toHaveBeenCalledWith(5, '');
+    });
+  });
+
+  test('debe usar getRealtimeStats con los minutos del presetKey si el tipo es minutes', async () => {
+    resolvePresetRequest.mockReturnValue({ type: 'minutes', minutes: 30 });
+    apiService.getRealtimeStats.mockResolvedValue(mockStats);
+
+    const config = { mode: 'preset', presetKey: 'last-30' };
+    renderHook(() => useRealtimeStats(config, false));
+
+    await waitFor(() => {
+      expect(apiService.getRealtimeStats).toHaveBeenCalledWith(30, '');
+    });
+  });
+
+  test('debe usar getRangeStats con el rango del presetKey si el tipo es range', async () => {
+    resolvePresetRequest.mockReturnValue({
+      type: 'range',
+      startDateTime: '2026-05-17T00:00:00',
+      endDateTime: '2026-05-17T23:59:59'
+    });
+    apiService.getRangeStats.mockResolvedValue(mockStats);
+
+    const config = { mode: 'preset', presetKey: 'today' };
+    renderHook(() => useRealtimeStats(config, false));
+
+    await waitFor(() => {
+      expect(apiService.getRangeStats).toHaveBeenCalledWith(
+        '2026-05-17T00:00:00',
+        '2026-05-17T23:59:59',
+        ''
+      );
+    });
+  });
+
+  test('debe disparar fetchStats en lugar de setStats directo por WebSocket si hay presetKey', async () => {
+    apiService.getRealtimeStats.mockResolvedValue(mockStats);
+    const config = { mode: 'preset', presetKey: 'dynamic-preset' };
+    
+    resolvePresetRequest.mockReturnValue({ type: 'minutes', minutes: 10 });
+    
+    renderHook(() => useRealtimeStats(config, true));
+
+    await waitFor(() => expect(apiService.getRealtimeStats).toHaveBeenCalledTimes(1));
+
+    const statsUpdateCallback = websocketService.on.mock.calls.find(call => call[0] === 'stats_update')[1];
+    
+    const wsData = { data: { total: { unique_devices: 99 } } };
+
+    await act(async () => {
+      statsUpdateCallback(wsData);
     });
 
     expect(apiService.getRealtimeStats).toHaveBeenCalledTimes(2);
